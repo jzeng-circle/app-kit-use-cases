@@ -1,21 +1,14 @@
 {
-  "name": "sdk-samples",
+  "name": "app-kit-use-cases",
   "version": "1.0.0",
-  "description": "Sample code for various SDK services",
+  "description": "Production-ready Circle App Kit use case examples",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx",
-    "circle-bridge": "tsx examples/circle-bridge.ts",
-    "circle-web3": "tsx examples/circle-web3.ts",
-    "anthropic": "tsx examples/anthropic.ts",
-    "web3": "tsx examples/web3.ts",
-    "app-kit:payment-processor": "tsx examples/app-kit/01-payment-processor.ts",
-    "app-kit:treasury": "tsx examples/app-kit/02-treasury-management.ts",
-    "app-kit:dex": "tsx examples/app-kit/03-cross-chain-dex.ts",
-    "app-kit:merchant": "tsx examples/app-kit/04-merchant-payment-flow.ts",
-    "app-kit:rebalancing": "tsx examples/app-kit/05-liquidity-rebalancing.ts"
+    "app-kit:payment": "tsx examples/app-kit-use-cases/01-payment-processor.ts",
+    "app-kit:treasury": "tsx examples/app-kit-use-cases/02-treasury-management.ts",
+    "app-kit:dex": "tsx examples/app-kit-use-cases/03-cross-chain-dex.ts"
   },
-  "keywords": ["sdk", "examples", "circle", "anthropic", "web3"],
+  "keywords": ["circle", "app-kit", "stablecoin", "usdc", "bridge", "swap"],
   "author": "",
   "license": "MIT",
   "devDependencies": {

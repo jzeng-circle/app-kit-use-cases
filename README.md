@@ -1,4 +1,4 @@
-# Circle App Kit — Use Case Samples
+# app-kit-use-cases
 
 Production-ready examples demonstrating real-world stablecoin operations using [Circle App Kit](https://developers.circle.com/app-kit).
 
