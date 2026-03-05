@@ -308,6 +308,7 @@ const TREASURY_CHAIN = 'Ethereum';
 async function checkChainBalances(chains: ChainBalance[], swapToUsdc = false): Promise<void> {
   console.log('\n--- Chain Balances ---');
 
+  // Single call to fetch all token balances across all chains
   const allBalances = await treasuryAdapter.getWalletTokenBalances({
     walletId: process.env.TREASURY_WALLET_ID as string
   });
@@ -328,11 +329,13 @@ async function checkChainBalances(chains: ChainBalance[], swapToUsdc = false): P
     console.log(`  ${chain.chain.padEnd(12)} $${chain.currentBalance.toLocaleString().padStart(8)}  (target $${chain.targetBalance.toLocaleString()}, ${delta})  [${status}]`);
   }
 
+  // Optional: swap any non-USDC tokens to USDC using the already-fetched balances
   if (swapToUsdc) {
     await swapToUSDC(allBalances);
   }
 }
 
+// Swap any non-USDC tokens to USDC (called from Step 1 when enabled)
 async function swapToUSDC(allBalances: { token: string; chain: string; amount: string }[]): Promise<void> {
   console.log('\n--- Swapping Tokens to USDC ---');
 
@@ -373,6 +376,7 @@ function planConsolidation(chains: ChainBalance[]): { chain: string; amount: str
     if (chain.chain === TREASURY_CHAIN) continue;
 
     const excess = chain.currentBalance - chain.targetBalance;
+    // Never drain below minimum balance
     const safeToMove = chain.currentBalance - chain.minimumBalance;
     const amountToMove = Math.min(excess, safeToMove);
 
