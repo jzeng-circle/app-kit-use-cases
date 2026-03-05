@@ -441,14 +441,14 @@ if (operations.length > 0) {
 npm run app-kit:treasury
 
 # Or run directly
-npx tsx examples/app-kit-use-cases/02-treasury-management.ts
+npx tsx examples/02-treasury-management.ts
 ```
 
 ### Schedule as a Daily Cron Job
 
 ```bash
 # Run at 2 AM every night (low gas hours)
-0 2 * * * cd /your/project && npx tsx examples/app-kit-use-cases/02-treasury-management.ts >> /var/log/treasury.log 2>&1
+0 2 * * * cd /your/project && npx tsx examples/02-treasury-management.ts >> /var/log/treasury.log 2>&1
 ```
 
 ---

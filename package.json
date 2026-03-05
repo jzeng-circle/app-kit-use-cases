@@ -4,9 +4,9 @@
   "description": "Production-ready Circle App Kit use case examples",
   "main": "index.js",
   "scripts": {
-    "app-kit:payment": "tsx examples/app-kit-use-cases/01-payment-processor.ts",
-    "app-kit:treasury": "tsx examples/app-kit-use-cases/02-treasury-management.ts",
-    "app-kit:dex": "tsx examples/app-kit-use-cases/03-cross-chain-dex.ts"
+    "app-kit:payment": "tsx examples/01-payment-processor.ts",
+    "app-kit:treasury": "tsx examples/02-treasury-management.ts",
+    "app-kit:dex": "tsx examples/03-cross-chain-dex.ts"
   },
   "keywords": ["circle", "app-kit", "stablecoin", "usdc", "bridge", "swap"],
   "author": "",
