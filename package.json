@@ -1,0 +1,40 @@
+{
+  "name": "sdk-samples",
+  "version": "1.0.0",
+  "description": "Sample code for various SDK services",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx",
+    "circle-bridge": "tsx examples/circle-bridge.ts",
+    "circle-web3": "tsx examples/circle-web3.ts",
+    "anthropic": "tsx examples/anthropic.ts",
+    "web3": "tsx examples/web3.ts",
+    "app-kit:payment-processor": "tsx examples/app-kit/01-payment-processor.ts",
+    "app-kit:treasury": "tsx examples/app-kit/02-treasury-management.ts",
+    "app-kit:dex": "tsx examples/app-kit/03-cross-chain-dex.ts",
+    "app-kit:merchant": "tsx examples/app-kit/04-merchant-payment-flow.ts",
+    "app-kit:rebalancing": "tsx examples/app-kit/05-liquidity-rebalancing.ts"
+  },
+  "keywords": ["sdk", "examples", "circle", "anthropic", "web3"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@circle-fin/stablecoin-kit": "latest",
+    "@circle-fin/adapter-viem-v2": "latest",
+    "@circle-fin/adapter-ethers-v6": "latest",
+    "@circle-fin/adapter-solana": "latest",
+    "@circle-fin/adapter-circle-wallets": "latest",
+    "@circle-fin/w3s-pw-sdk": "^3.3.0",
+    "@solana/web3.js": "^1.87.0",
+    "ethers": "^6.9.0",
+    "viem": "^2.7.0",
+    "web3": "^4.3.0",
+    "dotenv": "^16.3.1"
+  }
+}
