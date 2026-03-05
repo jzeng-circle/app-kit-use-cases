@@ -7,25 +7,25 @@ Production-ready examples demonstrating real-world stablecoin operations using [
 ### 01. Stablecoin Acquiring (Payment Processing)
 Accept payments in any token (USDT, DAI, ETH) and settle stable USDC to merchants on their preferred chain, with built-in platform fee collection.
 
-**Read More**: [examples/01-PAYMENT-PROCESSOR.md](./examples/01-PAYMENT-PROCESSOR.md)
+**Read More**: [app-kit-use-cases/01-PAYMENT-PROCESSOR.md](./app-kit-use-cases/01-PAYMENT-PROCESSOR.md)
 
 ---
 
 ### 02. Multi-Chain Treasury Management
 Consolidate funds from multiple chains to a central treasury. Threshold-based automation, minimum balance protection, and zero bridge fees with SLOW mode.
 
-**Read More**: [examples/02-TREASURY-MANAGEMENT.md](./examples/02-TREASURY-MANAGEMENT.md)
+**Read More**: [app-kit-use-cases/02-TREASURY-MANAGEMENT.md](./app-kit-use-cases/02-TREASURY-MANAGEMENT.md)
 
 ---
 
 ### 03. Cross-Chain DEX (Token Swaps)
 Swap any token across any chain in a single operation — automatic routing handles swap → bridge → swap.
 
-**Code**: [examples/03-cross-chain-dex.ts](./examples/03-cross-chain-dex.ts)
+**Code**: [app-kit-use-cases/03-cross-chain-dex.ts](./app-kit-use-cases/03-cross-chain-dex.ts)
 
 ---
 
-Browse all use cases: [examples/INDEX.md](./examples/INDEX.md)
+Browse all use cases: [app-kit-use-cases/INDEX.md](./app-kit-use-cases/INDEX.md)
 
 ## Setup
 
@@ -51,7 +51,7 @@ npm run app-kit:dex
 Or run any file directly:
 
 ```bash
-npx tsx examples/01-payment-processor.ts
+npx tsx app-kit-use-cases/01-payment-processor.ts
 ```
 
 ## Environment Variables
