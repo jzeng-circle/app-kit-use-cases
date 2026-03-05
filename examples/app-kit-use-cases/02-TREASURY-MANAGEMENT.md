@@ -30,7 +30,7 @@ An automated treasury management system with these key capabilities:
 - **SLOW mode**: Free transfers — Circle's CCTP charges no protocol fee in slow mode
 - **No contract addresses**: Use token aliases (`USDC`, `USDT`, `DAI`) throughout
 
-> **Note**: This example uses Circle Wallet for managed key custody. You can swap in any other wallet adapter (Viem, Ethers, or custom) without changing the treasury logic.
+> **Note**: This example uses Circle Wallet for managed key custody. Any other wallet adapter (Viem, Ethers, or custom) can be swapped in without changing the treasury logic.
 
 **2. Significant Cost Savings Through Automation**
 - SLOW bridge mode costs $0 in protocol fees (vs ~$10 FAST mode per bridge)
@@ -156,7 +156,9 @@ async function checkChainBalances(chains: ChainBalance[]): Promise<void> {
 - Runs before bridging so that only USDC moves to the treasury
 - Each swap is independent — one failure doesn't stop the rest
 
-**When to use:** Enable this when your treasury wallets hold a mix of stablecoins and you want a single asset (USDC) flowing to the main treasury.
+**When to use:**
+- Your treasury wallets hold a mix of stablecoins (USDT, DAI, etc.)
+- You want a single asset (USDC) flowing into the main treasury
 
 ```typescript
 async function swapToUSDC(holdings: TokenHolding[]): Promise<void> {
@@ -187,7 +189,9 @@ async function swapToUSDC(holdings: TokenHolding[]): Promise<void> {
 - Applies the threshold filter — skips tiny excess amounts
 - Returns a simple list of `{ chain, amount }` pairs (no bridges executed yet)
 
-**Key protection:** `amountToMove = min(excess, balance - minimum)` — this ensures the chain retains its operational floor even if target is lower than minimum.
+**Key protection:** `amountToMove = min(excess, balance - minimum)`
+- Ensures the chain retains its operational floor
+- Safe even when `targetBalance` is lower than `minimumBalance`
 
 ```typescript
 function planConsolidation(chains: ChainBalance[]): { chain: string; amount: string }[] {
@@ -218,7 +222,9 @@ function planConsolidation(chains: ChainBalance[]): { chain: string; amount: str
 - Uses SLOW mode — Circle's CCTP with no protocol fee
 - Each bridge is independent — one failure doesn't stop the rest
 
-**Note:** SLOW mode settles in ~15-30 minutes vs seconds for FAST. For treasury consolidation this is ideal — you trade speed for zero cost.
+**Note:**
+- SLOW mode settles in ~15-30 minutes (vs seconds for FAST)
+- Ideal for treasury consolidation — you trade speed for zero cost
 
 ```typescript
 async function executeConsolidation(
@@ -257,7 +263,9 @@ touch .env
 
 ### Environment Variables
 
-> **Note**: This example uses Circle Wallet for managed key custody. To get your credentials, see the [Circle Wallet Quickstart Guide](https://developers.circle.com/w3s/docs/programmable-wallets-quickstart). You'll need an API Key and Entity Secret from the [Circle Console](https://console.circle.com/), plus the Wallet ID of your treasury wallet.
+> **Note**: This example uses Circle Wallet for managed key custody. To get your credentials:
+> - API Key and Entity Secret: [Circle Console](https://console.circle.com/)
+> - Setup guide: [Circle Wallet Quickstart](https://developers.circle.com/w3s/docs/programmable-wallets-quickstart)
 
 ```bash
 # .env

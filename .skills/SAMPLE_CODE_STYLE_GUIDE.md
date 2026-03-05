@@ -666,6 +666,7 @@ Before submitting example code, verify:
 9. **Flatten return types for simple operations**: When a step only produces a list of `{ chain, amount }` pairs, don't wrap it in a full `ConsolidationOperation` interface with `status`, `txHashes`, `error`, etc. Keep return types as simple as the data actually used.
 10. **Swap before bridge pattern**: When treasury wallets hold mixed stablecoins, add an optional "swap to USDC" step before bridging. This keeps the main treasury in a single asset. Place it between balance-checking and planning — it's a same-chain operation that feeds into the cross-chain step.
 11. **Optional steps belong in the flow, not in docs only**: If a step is optional but commonly needed (e.g., token consolidation via swap), include it directly in the code as a clearly labeled optional block. Don't just mention it in the MD — developers follow the code, not the docs.
+12. **Never mix bullet-point content into paragraph format**: If content is list-like (multiple items, conditions, or reasons), always use bullet points — never write them as a single run-on sentence. Labels like `**When to use:**`, `**Note:**`, `**Key protection:**` must be followed by bullet points if they contain more than one idea. A short single sentence is fine as a paragraph; anything with multiple clauses or items must be a list.
 
 ## Summary
 
