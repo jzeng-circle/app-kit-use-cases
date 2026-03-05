@@ -64,35 +64,6 @@ Corporate treasuries, DAO management, DEX operators, DeFi protocols, multi-chain
 
 ---
 
-### 03. Cross-Chain DEX (Token Swaps)
-
-**Files**:
-- `03-cross-chain-dex.ts` - Implementation code
-
-**Business Problem**:
-
-Enable users to swap tokens across different blockchains in a single transaction without manually bridging.
-
-**Solution Highlights**:
-
-- Cross-chain token swaps (any token → any token, any chain → any chain)
-- Automatic routing: swap → bridge → swap
-- Multi-hop optimization for best prices
-- Slippage protection and quote generation
-- Real-time execution tracking
-
-**Examples**:
-
-- USDT on Ethereum → USDC on Base
-- DAI on Polygon → USDC on Arbitrum
-- Any token cross-chain conversion
-
-**Best For**:
-
-Trading platforms, wallet applications, DEX aggregators, cross-chain DeFi
-
----
-
 ## 🚀 Getting Started
 
 ### For Developers New to App Kit
@@ -125,7 +96,6 @@ All use cases leverage App Kit's built-in capabilities:
 - Add crypto checkout to e-commerce → **Use Case 01**
 - Consolidate treasury across chains → **Use Case 02**
 - Rebalance DEX liquidity → **Use Case 02**
-- Build a cross-chain trading platform → **Use Case 03**
 
 ---
 

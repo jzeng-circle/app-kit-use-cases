@@ -18,13 +18,6 @@ Consolidate funds from multiple chains to a central treasury. Threshold-based au
 
 ---
 
-### 03. Cross-Chain DEX (Token Swaps)
-Swap any token across any chain in a single operation — automatic routing handles swap → bridge → swap.
-
-**Code**: [app-kit-use-cases/03-cross-chain-dex.ts](./app-kit-use-cases/03-cross-chain-dex.ts)
-
----
-
 Browse all use cases: [app-kit-use-cases/INDEX.md](./app-kit-use-cases/INDEX.md)
 
 ## Setup
@@ -44,8 +37,6 @@ npm run app-kit:payment
 # Treasury management
 npm run app-kit:treasury
 
-# Cross-chain DEX
-npm run app-kit:dex
 ```
 
 Or run any file directly:

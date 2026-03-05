@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "app-kit:payment": "tsx app-kit-use-cases/01-payment-processor.ts",
-    "app-kit:treasury": "tsx app-kit-use-cases/02-treasury-management.ts",
-    "app-kit:dex": "tsx app-kit-use-cases/03-cross-chain-dex.ts"
+    "app-kit:treasury": "tsx app-kit-use-cases/02-treasury-management.ts"
   },
   "keywords": ["circle", "app-kit", "stablecoin", "usdc", "bridge", "swap"],
   "author": "",
