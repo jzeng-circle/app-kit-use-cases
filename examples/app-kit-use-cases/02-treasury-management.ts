@@ -3,10 +3,9 @@
  *
  * Flow:
  * 1. Check USDC balances across all chains
- * 2. Identify chains with excess funds above target
- * 3. Bridge excess to main treasury (SLOW mode for zero fees)
- * 4. Optionally top-up chains that fell below target
- * 5. Generate consolidation report
+ * 2. (Optional) Swap non-USDC tokens to USDC on each chain
+ * 3. Identify chains with excess funds above target
+ * 4. Bridge excess to main treasury (SLOW mode for zero fees)
  *
  * Benefits: Zero bridge fees using SLOW mode, automated scheduling
  */
@@ -26,29 +25,10 @@ interface ChainBalance {
   minimumBalance: number;
 }
 
-interface ConsolidationConfig {
-  mainTreasuryChain: string;
-  mainTreasuryAddress: string;
-  consolidationThreshold: number; // Skip chains with excess below this
-  useSlowMode: boolean;           // SLOW = zero bridge fees
-}
-
-interface ConsolidationOperation {
-  fromChain: string;
-  toChain: string;
+interface TokenHolding {
+  chain: string;
+  token: string;   // Non-USDC token to swap (e.g., 'USDT', 'DAI')
   amount: string;
-  reason: string;
-  status: 'pending' | 'completed' | 'failed';
-  txHashes: string[];
-  error?: string;
-}
-
-interface ConsolidationReport {
-  timestamp: string;
-  totalConsolidated: number;
-  operations: ConsolidationOperation[];
-  finalBalances: Record<string, number>;
-  bridgeFees: string;
 }
 
 // ===========================
@@ -56,6 +36,7 @@ interface ConsolidationReport {
 // ===========================
 
 const CONSOLIDATION_THRESHOLD = 1000; // Only consolidate if excess > $1,000
+const SLIPPAGE_BPS = 50;              // 0.5% slippage for swaps
 const USE_SLOW_MODE = true;           // SLOW mode = free bridge (no protocol fees)
 
 // ===========================
@@ -64,7 +45,7 @@ const USE_SLOW_MODE = true;           // SLOW mode = free bridge (no protocol fe
 
 const kit = new StablecoinKit();
 
-const adapter = createCircleWalletAdapter({
+const treasuryAdapter = createCircleWalletAdapter({
   apiKey: process.env.CIRCLE_API_KEY as string,
   walletId: process.env.TREASURY_WALLET_ID as string,
   entitySecret: process.env.CIRCLE_ENTITY_SECRET as string
@@ -81,51 +62,70 @@ async function checkChainBalances(chains: ChainBalance[]): Promise<void> {
   console.log('\n--- Chain Balances ---');
 
   for (const chain of chains) {
+    const excess = chain.currentBalance - chain.targetBalance;
     const status =
       chain.currentBalance > chain.targetBalance ? 'EXCESS'
       : chain.currentBalance < chain.minimumBalance ? 'LOW'
       : 'OK';
 
-    const excess = chain.currentBalance - chain.targetBalance;
-    const excessStr = excess > 0 ? `+$${excess.toFixed(0)}` : `-$${Math.abs(excess).toFixed(0)}`;
-
-    console.log(`  ${chain.chain.padEnd(12)} $${chain.currentBalance.toLocaleString().padStart(8)}  (target $${chain.targetBalance.toLocaleString()}, ${excessStr})  [${status}]`);
+    const delta = excess >= 0 ? `+$${excess.toFixed(0)}` : `-$${Math.abs(excess).toFixed(0)}`;
+    console.log(`  ${chain.chain.padEnd(12)} $${chain.currentBalance.toLocaleString().padStart(8)}  (target $${chain.targetBalance.toLocaleString()}, ${delta})  [${status}]`);
   }
 }
 
 // ===========================
-// STEP 2: PLAN CONSOLIDATION
+// STEP 2: SWAP TO USDC (Optional)
+// Consolidate non-USDC tokens on each chain before bridging
 // ===========================
 
-function planConsolidation(
-  chains: ChainBalance[],
-  config: ConsolidationConfig
-): ConsolidationOperation[] {
+async function swapToUSDC(holdings: TokenHolding[]): Promise<void> {
+  console.log('\n--- Swapping Tokens to USDC ---');
+
+  for (const holding of holdings) {
+    console.log(`\n  Swapping ${holding.amount} ${holding.token} → USDC on ${holding.chain}`);
+
+    try {
+      const result = await kit.swap({
+        from: { adapter: treasuryAdapter, chain: holding.chain },
+        tokenIn: holding.token,
+        tokenOut: 'USDC',
+        amount: holding.amount,
+        config: {
+          kitKey: process.env.KIT_KEY as string,
+          slippageBps: SLIPPAGE_BPS
+        }
+      });
+
+      console.log(`  ✓ Swapped: ${result.txHash}`);
+    } catch (error: any) {
+      console.error(`  ✗ Failed: ${error.message}`);
+    }
+  }
+}
+
+// ===========================
+// STEP 3: PLAN CONSOLIDATION
+// ===========================
+
+function planConsolidation(chains: ChainBalance[]): { chain: string; amount: string }[] {
   console.log('\n--- Consolidation Plan ---');
 
-  const operations: ConsolidationOperation[] = [];
+  const operations: { chain: string; amount: string }[] = [];
 
   for (const chain of chains) {
-    if (chain.chain === config.mainTreasuryChain) {
+    if (chain.chain === TREASURY_CHAIN) {
       console.log(`  ${chain.chain}: Skipped (main treasury)`);
       continue;
     }
 
     const excess = chain.currentBalance - chain.targetBalance;
-    // Respect minimum balance — never drain below it
+    // Never drain below minimum balance
     const safeToMove = chain.currentBalance - chain.minimumBalance;
     const amountToMove = Math.min(excess, safeToMove);
 
-    if (amountToMove > config.consolidationThreshold) {
-      console.log(`  ${chain.chain}: Consolidate $${amountToMove.toFixed(2)} → ${config.mainTreasuryChain}`);
-      operations.push({
-        fromChain: chain.chain,
-        toChain: config.mainTreasuryChain,
-        amount: amountToMove.toFixed(2),
-        reason: `Excess $${excess.toFixed(2)} above target`,
-        status: 'pending',
-        txHashes: []
-      });
+    if (amountToMove > CONSOLIDATION_THRESHOLD) {
+      console.log(`  ${chain.chain}: Consolidate $${amountToMove.toFixed(2)} → ${TREASURY_CHAIN}`);
+      operations.push({ chain: chain.chain, amount: amountToMove.toFixed(2) });
     } else if (excess > 0) {
       console.log(`  ${chain.chain}: Excess $${excess.toFixed(2)} below threshold — skip`);
     } else {
@@ -133,88 +133,38 @@ function planConsolidation(
     }
   }
 
-  console.log(`\n  Total operations planned: ${operations.length}`);
-
+  console.log(`\n  Total operations: ${operations.length}`);
   return operations;
 }
 
 // ===========================
-// STEP 3: EXECUTE CONSOLIDATION
+// STEP 4: EXECUTE CONSOLIDATION
 // ===========================
 
 async function executeConsolidation(
-  operations: ConsolidationOperation[],
-  config: ConsolidationConfig
+  operations: { chain: string; amount: string }[]
 ): Promise<void> {
   console.log('\n--- Executing Consolidation ---');
 
   for (const op of operations) {
-    try {
-      console.log(`\n  Bridging $${op.amount} from ${op.fromChain} → ${op.toChain}`);
-      console.log(`  Reason: ${op.reason}`);
+    console.log(`\n  Bridging $${op.amount} from ${op.chain} → ${TREASURY_CHAIN}`);
 
+    try {
       const result = await kit.bridge({
-        from: { adapter, chain: op.fromChain },
+        from: { adapter: treasuryAdapter, chain: op.chain },
         to: {
-          adapter,
-          chain: op.toChain,
-          recipientAddress: config.mainTreasuryAddress
+          adapter: treasuryAdapter,
+          chain: TREASURY_CHAIN,
+          recipientAddress: TREASURY_ADDRESS
         },
         amount: op.amount,
-        config: {
-          transferSpeed: config.useSlowMode ? 'SLOW' : 'FAST'
-        }
+        config: { transferSpeed: USE_SLOW_MODE ? 'SLOW' : 'FAST' }
       });
-
-      op.status = 'completed';
-      op.txHashes = result.steps.map(s => s.txHash);
 
       console.log(`  ✓ Completed (${result.state})`);
       result.steps.forEach((step, i) => {
         console.log(`    Step ${i + 1}: ${step.action} — ${step.txHash}`);
       });
-
-    } catch (error: any) {
-      op.status = 'failed';
-      op.error = error.message;
-      console.error(`  ✗ Failed: ${error.message}`);
-    }
-  }
-}
-
-// ===========================
-// STEP 4: REBALANCE (Optional)
-// ===========================
-
-async function topUpLowChains(
-  chains: ChainBalance[],
-  config: ConsolidationConfig
-): Promise<void> {
-  console.log('\n--- Topping Up Low Chains ---');
-
-  const lowChains = chains.filter(
-    c => c.chain !== config.mainTreasuryChain &&
-    (c.targetBalance - c.currentBalance) > config.consolidationThreshold
-  );
-
-  if (lowChains.length === 0) {
-    console.log('  No chains need topping up');
-    return;
-  }
-
-  for (const chain of lowChains) {
-    const deficit = (chain.targetBalance - chain.currentBalance).toFixed(2);
-    console.log(`\n  Bridging $${deficit} from ${config.mainTreasuryChain} → ${chain.chain}`);
-
-    try {
-      const result = await kit.bridge({
-        from: { adapter, chain: config.mainTreasuryChain },
-        to: { adapter, chain: chain.chain },
-        amount: deficit,
-        config: { transferSpeed: config.useSlowMode ? 'SLOW' : 'FAST' }
-      });
-
-      console.log(`  ✓ Completed: ${result.steps[0].txHash}`);
     } catch (error: any) {
       console.error(`  ✗ Failed: ${error.message}`);
     }
@@ -222,39 +172,7 @@ async function topUpLowChains(
 }
 
 // ===========================
-// STEP 5: GENERATE REPORT
-// ===========================
-
-function generateReport(
-  operations: ConsolidationOperation[],
-  finalBalances: Record<string, number>,
-  config: ConsolidationConfig
-): ConsolidationReport {
-  const totalConsolidated = operations
-    .filter(o => o.status === 'completed')
-    .reduce((sum, o) => sum + parseFloat(o.amount), 0);
-
-  const report: ConsolidationReport = {
-    timestamp: new Date().toISOString(),
-    totalConsolidated,
-    operations,
-    finalBalances,
-    bridgeFees: config.useSlowMode
-      ? '$0.00 (SLOW mode — no protocol fees)'
-      : `~$${(operations.length * 0.01).toFixed(2)} (FAST mode)`
-  };
-
-  console.log('\n=== Consolidation Report ===');
-  console.log(`  Timestamp:          ${report.timestamp}`);
-  console.log(`  Total Consolidated: $${totalConsolidated.toFixed(2)}`);
-  console.log(`  Successful:         ${operations.filter(o => o.status === 'completed').length}/${operations.length}`);
-  console.log(`  Bridge Fees:        ${report.bridgeFees}`);
-
-  return report;
-}
-
-// ===========================
-// SCHEDULED CONSOLIDATION JOB
+// CONSOLIDATION JOB
 // ===========================
 
 async function runConsolidationJob() {
@@ -266,42 +184,37 @@ async function runConsolidationJob() {
 
   // In production: fetch live balances from each chain
   const chainBalances: ChainBalance[] = [
-    { chain: 'Base',      currentBalance: 15000, targetBalance: 10000, minimumBalance: 5000 },
-    { chain: 'Arbitrum',  currentBalance: 12500, targetBalance: 10000, minimumBalance: 5000 },
-    { chain: 'Polygon',   currentBalance: 8000,  targetBalance: 10000, minimumBalance: 5000 },
-    { chain: 'Optimism',  currentBalance: 5500,  targetBalance: 10000, minimumBalance: 5000 },
-    { chain: 'Ethereum',  currentBalance: 25000, targetBalance: 50000, minimumBalance: 20000 }
+    { chain: 'Base',     currentBalance: 15000, targetBalance: 10000, minimumBalance: 5000 },
+    { chain: 'Arbitrum', currentBalance: 12500, targetBalance: 10000, minimumBalance: 5000 },
+    { chain: 'Polygon',  currentBalance: 8000,  targetBalance: 10000, minimumBalance: 5000 },
+    { chain: 'Optimism', currentBalance: 5500,  targetBalance: 10000, minimumBalance: 5000 },
+    { chain: 'Ethereum', currentBalance: 25000, targetBalance: 50000, minimumBalance: 20000 }
   ];
 
-  const config: ConsolidationConfig = {
-    mainTreasuryChain: TREASURY_CHAIN,
-    mainTreasuryAddress: TREASURY_ADDRESS,
-    consolidationThreshold: CONSOLIDATION_THRESHOLD,
-    useSlowMode: USE_SLOW_MODE
-  };
+  // (Optional) Non-USDC tokens sitting in the treasury on each chain
+  const nonUsdcHoldings: TokenHolding[] = [
+    { chain: 'Base',     token: 'USDT', amount: '3000' },
+    { chain: 'Arbitrum', token: 'DAI',  amount: '1500' }
+  ];
 
   // Step 1: Audit current state
   await checkChainBalances(chainBalances);
 
-  // Step 2: Decide what to move
-  const operations = planConsolidation(chainBalances, config);
+  // Step 2 (Optional): Swap any non-USDC tokens to USDC before bridging
+  if (nonUsdcHoldings.length > 0) {
+    await swapToUSDC(nonUsdcHoldings);
+  }
+
+  // Step 3: Decide what to move
+  const operations = planConsolidation(chainBalances);
 
   if (operations.length === 0) {
     console.log('\n✓ Nothing to consolidate');
     return;
   }
 
-  // Step 3: Execute bridges
-  await executeConsolidation(operations, config);
-
-  // Step 4: Top up chains that fell short (optional)
-  await topUpLowChains(chainBalances, config);
-
-  // Step 5: Report
-  const finalBalances: Record<string, number> = {};
-  for (const c of chainBalances) finalBalances[c.chain] = c.currentBalance;
-
-  generateReport(operations, finalBalances, config);
+  // Step 4: Execute bridges
+  await executeConsolidation(operations);
 
   console.log('\n✓ Treasury consolidation complete');
 }

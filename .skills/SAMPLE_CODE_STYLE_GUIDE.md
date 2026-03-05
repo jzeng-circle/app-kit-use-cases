@@ -657,6 +657,16 @@ Before submitting example code, verify:
 5. **Runnable Examples**: Store private keys in session objects, implement real blockchain monitoring
 6. **Autonomous Execution**: Examples should work end-to-end with just a private key provided
 
+## Recent Learnings (2026-03-05)
+
+### Keeping Samples Simple for Developers:
+
+7. **Remove reporting/audit steps from samples**: Steps like "generate report" or "save to database" add complexity without teaching SDK usage. Leave these as "Next Steps" in the MD instead — keep the code focused on SDK calls only.
+8. **Simplify optional steps aggressively**: Optional steps (e.g., top-up low chains) should be collapsed to the minimum viable code — filter + loop + one SDK call. No verbose inner checks or logging beyond a success/failure line.
+9. **Flatten return types for simple operations**: When a step only produces a list of `{ chain, amount }` pairs, don't wrap it in a full `ConsolidationOperation` interface with `status`, `txHashes`, `error`, etc. Keep return types as simple as the data actually used.
+10. **Swap before bridge pattern**: When treasury wallets hold mixed stablecoins, add an optional "swap to USDC" step before bridging. This keeps the main treasury in a single asset. Place it between balance-checking and planning — it's a same-chain operation that feeds into the cross-chain step.
+11. **Optional steps belong in the flow, not in docs only**: If a step is optional but commonly needed (e.g., token consolidation via swap), include it directly in the code as a clearly labeled optional block. Don't just mention it in the MD — developers follow the code, not the docs.
+
 ## Summary
 
 **Remember: Code should be SIMPLE, DIRECT, PRACTICAL, and RUNNABLE.**

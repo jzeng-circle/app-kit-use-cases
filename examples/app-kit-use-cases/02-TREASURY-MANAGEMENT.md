@@ -7,6 +7,7 @@
 You're managing a company's treasury with USDC spread across multiple blockchains:
 - **Operations** require liquidity on Base, Arbitrum, Polygon, and Optimism
 - **Accounting** needs a consolidated view in one place (Ethereum)
+- **Mixed tokens** — USDT, DAI, and other stablecoins accumulate alongside USDC
 - **Gas fees** stack up fast when bridging manually across 5+ chains, daily
 - **Human error** is inevitable when monitoring balances by hand
 
@@ -15,21 +16,21 @@ You're managing a company's treasury with USDC spread across multiple blockchain
 An automated treasury management system with these key capabilities:
 
 - **Multi-Chain Visibility**: Audit balances across all chains in one pass
+- **Token Consolidation**: Swap any non-USDC holdings to USDC before bridging
 - **Threshold-Based Consolidation**: Only move funds when excess is meaningful
 - **Minimum Balance Protection**: Never drain a chain below its operational floor
-- **Bi-Directional Rebalancing**: Both consolidate excess and top up deficits
 - **Zero Bridge Fees**: SLOW mode uses Circle's CCTP with no protocol fee
 - **Scheduled Automation**: Run as a daily cron job with zero manual intervention
 
 ### Benefits of This Implementation
 
 **1. Simple APIs for Complex Operations**
+- **Swap**: One call converts any stablecoin (USDT, DAI) to USDC on the same chain
 - **Bridge**: One call moves USDC across any supported chain pair
 - **SLOW mode**: Free transfers — Circle's CCTP charges no protocol fee in slow mode
-- **No contract addresses**: Use token aliases (`USDC`) without chain-specific addresses
-- **Automatic routing**: App Kit handles the CCTP burn-and-mint path automatically
+- **No contract addresses**: Use token aliases (`USDC`, `USDT`, `DAI`) throughout
 
-> **Note**: This example uses a Viem private key adapter. You can swap in any wallet adapter (Ethers, Circle Wallets, or custom) without changing the treasury logic.
+> **Note**: This example uses Circle Wallet for managed key custody. You can swap in any other wallet adapter (Viem, Ethers, or custom) without changing the treasury logic.
 
 **2. Significant Cost Savings Through Automation**
 - SLOW bridge mode costs $0 in protocol fees (vs ~$10 FAST mode per bridge)
@@ -44,28 +45,16 @@ An automated treasury management system with these key capabilities:
 ```
 +---------------------------------------------------------------------+
 |           MULTI-CHAIN TREASURY MANAGEMENT - OPTIMIZED FLOW         |
-|                  (Consolidation + Rebalancing)                      |
 +---------------------------------------------------------------------+
 
 CHAINS:
 +--------------+  +--------------+  +--------------+  +--------------+
 |     Base     |  |   Arbitrum   |  |   Polygon    |  |   Optimism   |
 |              |  |              |  |              |  |              |
-| USDC $15,000 |  | USDC $12,500 |  | USDC  $8,000 |  | USDC  $5,500 |
-| target $10k  |  | target $10k  |  | target $10k  |  | target $10k  |
-| EXCESS $5k   |  | EXCESS $2.5k |  | DEFICIT $2k  |  | DEFICIT $4.5k|
+| USDT  $3,000 |  | DAI   $1,500 |  | USDC  $8,000 |  | USDC  $5,500 |
+| USDC $15,000 |  | USDC $12,500 |  | target $10k  |  | target $10k  |
+| target $10k  |  | target $10k  |  |              |  |              |
 +--------------+  +--------------+  +--------------+  +--------------+
-       |                 |                  ^                 ^
-       |  SLOW bridge    |  SLOW bridge     |  Top-up         |  Skip
-       |  (zero fee)     |  (zero fee)      |  (optional)     |  (< threshold)
-       v                 v                  |                 |
-+---------------------------------------------------------------------+
-|                     ETHEREUM (Main Treasury)                        |
-|                         USDC $25,000                                |
-|                         target $50,000                              |
-|                                                                     |
-|  After consolidation: +$7,500 (from Base $5k + Arbitrum $2.5k)    |
-+---------------------------------------------------------------------+
 
 FLOW:
 
@@ -73,29 +62,28 @@ Step 1: Check Balances
     Read USDC balance on Base, Arbitrum, Polygon, Optimism, Ethereum
     Compare each against target and minimum
 
-Step 2: Plan Consolidation
-    Base $15k (target $10k) → Consolidate $5,000 to Ethereum
-    Arbitrum $12.5k (target $10k) → Consolidate $2,500 to Ethereum
-    Polygon $8k (target $10k) → Skip (deficit, not excess)
-    Optimism $5.5k (target $10k) → Skip (excess $500 < $1k threshold)
+Step 2: Swap to USDC (Optional)
+    Base:     USDT $3,000  → USDC  (same chain, 1 swap)
+    Arbitrum: DAI  $1,500  → USDC  (same chain, 1 swap)
+    Result:   all chains now hold only USDC
 
-Step 3: Execute (SLOW bridges, zero protocol fees)
+Step 3: Plan Consolidation
+    Base $15k+$3k (target $10k)   → Consolidate $5,000 to Ethereum
+    Arbitrum $12.5k+$1.5k (target $10k) → Consolidate $2,500 to Ethereum
+    Polygon $8k (target $10k)     → Skip (deficit, not excess)
+    Optimism $5.5k (target $10k)  → Skip (excess $500 < $1k threshold)
+
+Step 4: Execute (SLOW bridges, zero protocol fees)
     Base → Ethereum: $5,000 USDC  (1 transaction)
     Arbitrum → Ethereum: $2,500 USDC  (1 transaction)
-
-Step 4: Top Up (Optional)
-    Ethereum → Polygon: $2,000 USDC  (if enabled)
-
-Step 5: Report
-    Total Consolidated: $7,500
-    Bridge Fees: $0.00 (SLOW mode)
 
 FINAL STATE:
 - Ethereum: $32,500 USDC (closer to $50k target)
 - Base: $10,000 USDC (at target)
 - Arbitrum: $10,000 USDC (at target)
-- Polygon: $8,000 USDC (unchanged, or $10k if topped up)
+- Polygon: $8,000 USDC (unchanged)
 - Optimism: $5,500 USDC (unchanged — below threshold)
+- Bridge Fees: $0.00 (SLOW mode)
 ```
 
 ---
@@ -107,20 +95,19 @@ FINAL STATE:
 **What this does:**
 - Configures consolidation threshold to filter out micro-movements
 - Sets SLOW mode to eliminate bridge protocol fees
-- Initializes App Kit SDK and Viem adapter with private key
+- Initializes App Kit SDK and Circle Wallet adapter
 - Reads treasury address and chain from environment
-
-> **Note**: This example uses Circle Wallet for managed key custody. You can swap in any other wallet adapter (Viem, Ethers, or custom) without changing the treasury logic.
 
 ```typescript
 import { StablecoinKit } from '@circle-fin/stablecoin-kit';
 import { createCircleWalletAdapter } from '@circle-fin/adapter-circle-wallet';
 
 const CONSOLIDATION_THRESHOLD = 1000; // Only move if excess > $1,000
+const SLIPPAGE_BPS = 50;              // 0.5% slippage for swaps
 const USE_SLOW_MODE = true;           // Free bridge — no protocol fees
 
 const kit = new StablecoinKit();
-const adapter = createCircleWalletAdapter({
+const treasuryAdapter = createCircleWalletAdapter({
   apiKey: process.env.CIRCLE_API_KEY as string,
   walletId: process.env.TREASURY_WALLET_ID as string,
   entitySecret: process.env.CIRCLE_ENTITY_SECRET as string
@@ -155,46 +142,66 @@ async function checkChainBalances(chains: ChainBalance[]): Promise<void> {
       : chain.currentBalance < chain.minimumBalance ? 'LOW'
       : 'OK';
 
-    console.log(`  ${chain.chain}: $${chain.currentBalance} (${excess > 0 ? '+' : ''}$${excess}) [${status}]`);
+    console.log(`  ${chain.chain}: $${chain.currentBalance} (${excess >= 0 ? '+' : ''}$${excess}) [${status}]`);
   }
 }
 ```
 
 ---
 
-### Step 3: Plan Consolidation
+### Step 3: Swap to USDC (Optional)
+
+**What this does:**
+- Swaps any non-USDC stablecoins (USDT, DAI, etc.) to USDC on the same chain
+- Runs before bridging so that only USDC moves to the treasury
+- Each swap is independent — one failure doesn't stop the rest
+
+**When to use:** Enable this when your treasury wallets hold a mix of stablecoins and you want a single asset (USDC) flowing to the main treasury.
+
+```typescript
+async function swapToUSDC(holdings: TokenHolding[]): Promise<void> {
+  for (const holding of holdings) {
+    const result = await kit.swap({
+      from: { adapter: treasuryAdapter, chain: holding.chain },
+      tokenIn: holding.token,
+      tokenOut: 'USDC',
+      amount: holding.amount,
+      config: {
+        kitKey: process.env.KIT_KEY as string,
+        slippageBps: SLIPPAGE_BPS
+      }
+    });
+
+    console.log(`  ✓ Swapped ${holding.amount} ${holding.token} → USDC on ${holding.chain}: ${result.txHash}`);
+  }
+}
+```
+
+---
+
+### Step 4: Plan Consolidation
 
 **What this does:**
 - Skips the main treasury chain
 - Calculates how much can safely move without breaching minimum balance
 - Applies the threshold filter — skips tiny excess amounts
-- Returns a list of pending operations (no bridges executed yet)
+- Returns a simple list of `{ chain, amount }` pairs (no bridges executed yet)
 
-**Key protection:** `amountToMove = min(excess, currentBalance - minimumBalance)` — this ensures the chain retains its operational floor even if target is lower than minimum.
+**Key protection:** `amountToMove = min(excess, balance - minimum)` — this ensures the chain retains its operational floor even if target is lower than minimum.
 
 ```typescript
-function planConsolidation(
-  chains: ChainBalance[],
-  config: ConsolidationConfig
-): ConsolidationOperation[] {
-  const operations: ConsolidationOperation[] = [];
+function planConsolidation(chains: ChainBalance[]): { chain: string; amount: string }[] {
+  const operations = [];
 
   for (const chain of chains) {
-    if (chain.chain === config.mainTreasuryChain) continue;
+    if (chain.chain === TREASURY_CHAIN) continue;
 
     const excess = chain.currentBalance - chain.targetBalance;
     const safeToMove = chain.currentBalance - chain.minimumBalance;
     const amountToMove = Math.min(excess, safeToMove);
 
-    if (amountToMove > config.consolidationThreshold) {
-      operations.push({
-        fromChain: chain.chain,
-        toChain: config.mainTreasuryChain,
-        amount: amountToMove.toFixed(2),
-        reason: `Excess $${excess.toFixed(2)} above target`,
-        status: 'pending',
-        txHashes: []
-      });
+    if (amountToMove > CONSOLIDATION_THRESHOLD) {
+      operations.push({ chain: chain.chain, amount: amountToMove.toFixed(2) });
     }
   }
 
@@ -204,105 +211,33 @@ function planConsolidation(
 
 ---
 
-### Step 4: Execute Consolidation
+### Step 5: Execute Consolidation
 
 **What this does:**
 - Iterates over planned operations and executes each bridge
 - Uses SLOW mode — Circle's CCTP with no protocol fee
-- Captures all step transaction hashes for audit trail
-- Marks each operation as `completed` or `failed` independently (one failure doesn't stop the rest)
+- Each bridge is independent — one failure doesn't stop the rest
 
-**Note:** SLOW mode means the bridge settles in ~15-30 minutes vs seconds for FAST. For treasury consolidation this is ideal — you trade speed for zero cost.
+**Note:** SLOW mode settles in ~15-30 minutes vs seconds for FAST. For treasury consolidation this is ideal — you trade speed for zero cost.
 
 ```typescript
 async function executeConsolidation(
-  operations: ConsolidationOperation[],
-  config: ConsolidationConfig
+  operations: { chain: string; amount: string }[]
 ): Promise<void> {
   for (const op of operations) {
     const result = await kit.bridge({
-      from: { adapter, chain: op.fromChain },
+      from: { adapter: treasuryAdapter, chain: op.chain },
       to: {
-        adapter,
-        chain: op.toChain,
-        recipientAddress: config.mainTreasuryAddress
+        adapter: treasuryAdapter,
+        chain: TREASURY_CHAIN,
+        recipientAddress: TREASURY_ADDRESS
       },
       amount: op.amount,
-      config: {
-        transferSpeed: config.useSlowMode ? 'SLOW' : 'FAST'
-      }
+      config: { transferSpeed: USE_SLOW_MODE ? 'SLOW' : 'FAST' }
     });
 
-    op.status = 'completed';
-    op.txHashes = result.steps.map(s => s.txHash);
+    console.log(`  ✓ Bridged $${op.amount} from ${op.chain}: ${result.steps[0].txHash}`);
   }
-}
-```
-
----
-
-### Step 5: Top Up Low Chains (Optional)
-
-**What this does:**
-- Finds chains that fell below their target balance
-- Bridges from the main treasury to cover the deficit
-- Same threshold check applies — skip if deficit is tiny
-- Independent of the consolidation step — can be enabled/disabled separately
-
-**When to use:** Enable this for DEX/DeFi protocols that need guaranteed liquidity on each chain. Disable for pure treasury consolidation use cases.
-
-```typescript
-async function topUpLowChains(
-  chains: ChainBalance[],
-  config: ConsolidationConfig
-): Promise<void> {
-  const lowChains = chains.filter(
-    c => c.chain !== config.mainTreasuryChain && c.currentBalance < c.targetBalance
-  );
-
-  for (const chain of lowChains) {
-    const deficit = chain.targetBalance - chain.currentBalance;
-
-    if (deficit < config.consolidationThreshold) continue;
-
-    await kit.bridge({
-      from: { adapter, chain: config.mainTreasuryChain },
-      to: { adapter, chain: chain.chain },
-      amount: deficit.toFixed(2),
-      config: { transferSpeed: 'SLOW' }
-    });
-  }
-}
-```
-
----
-
-### Step 6: Generate Report
-
-**What this does:**
-- Aggregates total USDC consolidated across all completed operations
-- Reports bridge fees paid (always $0 in SLOW mode)
-- Returns a structured `ConsolidationReport` suitable for saving to a database or sending as a notification
-
-```typescript
-function generateReport(
-  operations: ConsolidationOperation[],
-  finalBalances: Record<string, number>,
-  config: ConsolidationConfig
-): ConsolidationReport {
-  const totalConsolidated = operations
-    .filter(o => o.status === 'completed')
-    .reduce((sum, o) => sum + parseFloat(o.amount), 0);
-
-  return {
-    timestamp: new Date().toISOString(),
-    totalConsolidated,
-    operations,
-    finalBalances,
-    bridgeFees: config.useSlowMode
-      ? '$0.00 (SLOW mode — no protocol fees)'
-      : `~$${(operations.length * 0.01).toFixed(2)} (FAST mode)`
-  };
 }
 ```
 
@@ -330,6 +265,7 @@ CIRCLE_API_KEY=your_circle_api_key
 TREASURY_WALLET_ID=your_treasury_wallet_id
 CIRCLE_ENTITY_SECRET=your_entity_secret
 TREASURY_ADDRESS=0xYourTreasuryAddress
+KIT_KEY=your_kit_key  # Required for swap operations
 ```
 
 ### Full Code
@@ -340,39 +276,50 @@ import { StablecoinKit } from '@circle-fin/stablecoin-kit';
 import { createCircleWalletAdapter } from '@circle-fin/adapter-circle-wallet';
 
 const kit = new StablecoinKit();
-const adapter = createCircleWalletAdapter({
+const treasuryAdapter = createCircleWalletAdapter({
   apiKey: process.env.CIRCLE_API_KEY as string,
   walletId: process.env.TREASURY_WALLET_ID as string,
   entitySecret: process.env.CIRCLE_ENTITY_SECRET as string
 });
 
 const TREASURY_ADDRESS = process.env.TREASURY_ADDRESS as string;
+const TREASURY_CHAIN = 'Ethereum';
 
-// Define your chain balances and targets
+// Define your chain balances and targets (replace with live on-chain reads)
 const chainBalances = [
   { chain: 'Base',     currentBalance: 15000, targetBalance: 10000, minimumBalance: 5000 },
   { chain: 'Arbitrum', currentBalance: 12500, targetBalance: 10000, minimumBalance: 5000 },
-  { chain: 'Polygon',  currentBalance: 8000,  targetBalance: 10000, minimumBalance: 5000 },
   { chain: 'Ethereum', currentBalance: 25000, targetBalance: 50000, minimumBalance: 20000 }
 ];
 
-// Plan which chains to consolidate from
+// (Optional) Non-USDC tokens to swap before consolidating
+const nonUsdcHoldings = [
+  { chain: 'Base',     token: 'USDT', amount: '3000' },
+  { chain: 'Arbitrum', token: 'DAI',  amount: '1500' }
+];
+
+// Step 1: Swap non-USDC to USDC (optional)
+for (const holding of nonUsdcHoldings) {
+  await kit.swap({
+    from: { adapter: treasuryAdapter, chain: holding.chain },
+    tokenIn: holding.token,
+    tokenOut: 'USDC',
+    amount: holding.amount,
+    config: { kitKey: process.env.KIT_KEY as string, slippageBps: 50 }
+  });
+}
+
+// Step 2: Bridge excess USDC to main treasury
 for (const chain of chainBalances) {
-  if (chain.chain === 'Ethereum') continue;
+  if (chain.chain === TREASURY_CHAIN) continue;
 
   const excess = chain.currentBalance - chain.targetBalance;
-  const safeToMove = chain.currentBalance - chain.minimumBalance;
-  const amount = Math.min(excess, safeToMove);
+  const amount = Math.min(excess, chain.currentBalance - chain.minimumBalance);
 
   if (amount > 1000) {
-    // Bridge excess to main treasury
     const result = await kit.bridge({
-      from: { adapter, chain: chain.chain },
-      to: {
-        adapter,
-        chain: 'Ethereum',
-        recipientAddress: TREASURY_ADDRESS
-      },
+      from: { adapter: treasuryAdapter, chain: chain.chain },
+      to: { adapter: treasuryAdapter, chain: TREASURY_CHAIN, recipientAddress: TREASURY_ADDRESS },
       amount: amount.toFixed(2),
       config: { transferSpeed: 'SLOW' } // Free bridge
     });
@@ -408,36 +355,28 @@ npx tsx examples/app-kit-use-cases/02-treasury-management.ts
 - Settlement takes ~15-30 minutes — perfectly fine for treasury operations
 - Switch to FAST only when speed is critical (it costs ~$10 per bridge)
 
-### 2. **Minimum Balance Protection**
+### 2. **Swap First, Then Bridge**
+- Swap non-USDC tokens to USDC on each chain before bridging
+- Keeps the main treasury in a single asset
+- Swap is optional — skip if your wallets already hold only USDC
+
+### 3. **Minimum Balance Protection**
 - Every chain has a `minimumBalance` floor that is never breached
 - The formula `min(excess, balance - minimum)` protects operational funds
 - Prevents accidentally stranding a chain with no gas budget
 
-### 3. **Threshold Filtering Reduces Noise**
+### 4. **Threshold Filtering Reduces Noise**
 - Only consolidate when excess exceeds `$1,000` (configurable)
 - Eliminates micro-transactions that cost more in gas than they move
-- Keeps the operation log clean and meaningful
-
-### 4. **Independent Operation Handling**
-- Each bridge executes independently — one failure doesn't abort others
-- Operations are tracked with `status: 'completed' | 'failed'`
-- Full transaction hash audit trail per operation
-
-### 5. **Bi-Directional Rebalancing**
-- `runConsolidationJob` consolidates excess to treasury
-- `topUpLowChains` distributes from treasury to underfunded chains
-- Enable both for DEX/DeFi liquidity management
-- Enable only consolidation for pure treasury accounting
 
 ---
 
 ## Next Steps
 
 1. **Fetch Live Balances**: Replace mock `currentBalance` with live on-chain reads using viem's `readContract` on the USDC token contract
-2. **Database Integration**: Persist `ConsolidationReport` records for accounting and audit trails
+2. **Database Integration**: Persist transaction hashes for accounting and audit trails
 3. **Alerts**: Notify on Slack/email when a chain goes below `minimumBalance` or when a bridge fails
 4. **Gas Timing**: Check gas prices before running and delay if unusually high
-5. **Multi-Sig**: For large treasuries, route operations through a Gnosis Safe or similar multi-sig
 
 ---
 
