@@ -2,54 +2,30 @@
 
 ## Business Case
 
-### Who This Is For
+Crypto payment acceptance is an increasingly common requirement for PSPs, large merchants, and fintech platforms — but building the infrastructure to do it reliably is far more complex than it looks. A customer may send USDT from Ethereum while the merchant wants to receive USDC on Base. Between those two points lies a chain of on-chain operations: token detection, conversion, aggregation, fee deduction, cross-chain bridging, and final settlement — each with its own failure modes. At volume, processing each payment individually also becomes cost-prohibitive, as gas fees compound across hundreds or thousands of daily transactions.
 
-This use case is built for organizations that need to accept cryptocurrency payments at scale and settle to merchants reliably:
-
-- **Payment Service Providers (PSPs)** building crypto payment rails for their merchant network
-- **Large merchants and e-commerce platforms** adding a native crypto checkout alongside existing fiat payment methods
-- **Fintech companies** launching stablecoin-based payment products for business-to-business (B2B) or consumer use cases
-- **Web3-native platforms** (exchanges, marketplaces, DeFi products) that want to accept customer payments in multiple tokens while settling in a single stablecoin
-
-### The Challenges They Face Today
-
-Building this infrastructure from scratch is significantly harder than it appears:
-
-- **Multi-chain complexity**: Customers may send payments from any chain (Ethereum, Base, Arbitrum, Polygon). Supporting multiple chains means deploying and maintaining separate RPC connections, contract integrations, and monitoring logic per chain — multiplying engineering effort with each chain added.
-- **Token fragmentation**: Customers pay with USDT, DAI, USDC, ETH, and other tokens. Converting them to a single settlement asset requires integrating DEX routers (Uniswap, 1inch, etc.) with different ABIs, liquidity pools, and slippage handling per chain.
-- **On-chain operational complexity**: Fee collection, batching, and cross-chain settlement require custom smart contract logic or complex multi-step transaction flows. Errors at any step can result in stuck funds or double payments.
-- **Lack of web3 infrastructure**: Most companies don't have managed wallet infrastructure in-house. Building custodial wallets that can programmatically create per-order wallets, sweep funds, and sign transactions requires significant security and key management investment.
-- **Gas cost management at scale**: Processing each payment as an individual on-chain transaction becomes prohibitively expensive at volume. Without batching, gas costs can exceed the payment value itself for small transactions.
-- **Fragile settlement pipelines**: Bridging funds to a merchant's preferred chain (e.g., USDC on Base) typically involves multiple separate tools and manual steps — swap, then bridge, then send — each with different error modes and no unified retry logic.
+This use case is designed for **Payment Service Providers (PSPs)** building crypto acquiring infrastructure, **e-commerce platforms and large merchants** adding crypto checkout to existing payment stacks, and **fintech companies** launching stablecoin payment products. It demonstrates how to build a production-grade acquiring pipeline that accepts any token on any supported chain, aggregates funds into an internal wallet, converts them to USDC in batches, and settles to merchants with platform fee collection — all through a small set of unified App Kit calls.
 
 ### The Solution
 
-An optimized stablecoin acquiring system with these key capabilities:
+App Kit addresses each step of the pipeline directly — replacing multi-chain DEX integrations, custom bridging logic, and manual wallet management with simple, unified API calls:
 
-- **Multi-Token Support**: Accept payments in any cryptocurrency
-- **Automatic Conversion**: Convert all tokens to stable USDC
-- **Intelligent Aggregation**: Pool funds before processing
-- **Batch Operations**: Process multiple payments in single transactions
-- **Fee Collection**: Built-in platform fee collection mechanism
-- **Flexible Settlement**: Daily, on-demand, or scheduled payouts to merchants
-- **Cross-Chain Support**: Bridge funds to merchant's preferred blockchain
+| Challenge | How App Kit Solves It |
+|---|---|
+| Customers pay with many tokens across many chains | `kit.swap()` converts any token to USDC with a single call, using token aliases — no contract addresses needed |
+| Gas costs multiply with payment volume | Batch all swaps per token per hour into one transaction — 80–90% gas savings vs individual swaps |
+| Managed wallet infrastructure is expensive to build | Circle Wallet adapter handles wallet creation, fund sweeping, and key custody out of the box |
+| Fee collection requires a separate transaction | Built-in `customFee` parameter deducts platform fees within the same bridge transaction |
+| Settlement to merchant's preferred chain is a multi-step manual process | `kit.bridge()` handles cross-chain settlement in one call, with automatic retry on failure |
 
-### Benefits of This Implementation
+### Benefits
 
-**1. Easy Implementation with Built-in Methods**
-- **Swap, Bridge, Send**: App Kit provides simple, unified APIs for all blockchain operations
-- **Fee Collection**: Built-in `customFee` parameter handles fee collection automatically
-- **Token Support**: Works with token aliases (USDT, USDC, DAI) without needing contract addresses
-- **Cross-Chain**: Seamlessly bridge funds across different blockchains in one call
-- **Error Handling**: Automatic retries and detailed error messages built into the SDK
+- **85% cost reduction at scale** — batch swaps and settlements eliminate per-transaction gas overhead
+- **Instant order confirmation** — funds are aggregated immediately on payment receipt; swap and settlement run asynchronously
+- **Flexible settlement schedule** — daily, weekly, or on-demand payouts with no code changes
+- **Drop-in wallet flexibility** — swap Circle Wallet for Viem, Ethers, or a custom adapter without changing the acquiring logic
 
-> **Note**: This example uses Circle Wallet for illustration purposes. You can use any wallet adapter (Viem, Ethers, or custom) with App Kit.
-
-**2. Significant Cost Savings Through Batching**
-- Process multiple payments in single transactions instead of individual operations
-- Batch swaps reduce gas costs by 80-90% (e.g., 100 swaps → 3 batch swaps)
-- Batch settlements reduce gas costs by 60-80% (e.g., 100 bridges → 10 settlements)
-- **Overall result: 85% cost reduction at scale**
+> **Note**: This example uses Circle Wallet for illustration. You can use any wallet adapter (Viem, Ethers, or custom) with App Kit.
 
 ---
 

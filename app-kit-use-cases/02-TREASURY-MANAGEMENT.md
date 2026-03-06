@@ -2,54 +2,30 @@
 
 ## Business Case
 
-### Who This Is For
+Any organization operating on-chain at scale eventually ends up with stablecoin balances scattered across multiple chains. Fees accumulate on Base, liquidity sits idle on Arbitrum, and the main treasury on Ethereum remains underfunded — while a team member logs into multiple block explorers, copies numbers into a spreadsheet, and manually decides what to move where. At 4–5 chains and daily bridging, this operational overhead compounds fast: hours of manual work per week, hundreds of dollars per month in bridge fees, and real exposure to human error on every transaction.
 
-This use case is built for organizations that hold and operate stablecoin balances across multiple blockchains:
-
-- **Corporate treasuries and fintech companies** that receive USDC/USDT inflows across chains and need to consolidate into a single accounting wallet for reporting and compliance
-- **DEX operators and DeFi protocols** that must maintain target liquidity levels per chain to support trading activity while sweeping excess back to a master treasury
-- **DAOs and on-chain organizations** managing operational budgets spread across chains, with a need for automated, auditable fund movements
-- **Multi-chain platforms** (exchanges, lending protocols, yield aggregators) that accumulate stablecoin fees and rewards on many chains and need efficient consolidation without manual intervention
-
-### The Challenges They Face Today
-
-Managing treasury across multiple chains manually is operationally expensive and error-prone:
-
-- **Multi-chain visibility gap**: There is no single place to see the combined balance across Base, Arbitrum, Polygon, Optimism, and Ethereum simultaneously. Teams typically log into multiple explorers or dashboards, copy numbers into spreadsheets, and make consolidation decisions by hand.
-- **On-chain execution complexity**: Bridging USDC from one chain to another requires selecting the right bridge protocol, understanding CCTP attestation flows, handling gas on the source chain, and confirming receipt on the destination — each step requiring separate tooling and failure handling.
-- **Token fragmentation**: Protocols accumulate USDT, DAI, and other stablecoins alongside USDC. Converting them before consolidation requires DEX integration on each chain, with different router contracts, fee tiers, and slippage behavior.
-- **Lack of automation infrastructure**: Without managed wallet infrastructure, treasury operations require a team member to manually sign and broadcast transactions. Automating this safely requires building key management, signing, and execution pipelines from scratch.
-- **Bridge fee drag**: Using FAST bridge modes across multiple chains daily adds up quickly. At $5–$10 per bridge and 4–5 chains, daily consolidation can cost hundreds of dollars per month in protocol fees alone.
-- **Risk of operational error**: Manual treasury operations — wrong amount, wrong destination chain, wrong token — carry real financial risk. A single mistake can result in funds locked on the wrong chain or sent to an incorrect address.
+This use case is designed for **corporate treasuries and fintech companies** that need consolidated stablecoin reporting across chains, **DEX operators and DeFi protocols** maintaining per-chain liquidity ratios, and **DAOs and multi-chain platforms** accumulating fees and rewards across chains that need automated, auditable sweeps to a master wallet. It demonstrates how to build a treasury management job that reads all chain balances in a single API call, converts any non-USDC tokens to USDC, and bridges excess funds to the main treasury — with minimum balance protection, threshold filtering, and zero protocol fees.
 
 ### The Solution
 
-An automated treasury management system with these key capabilities:
+App Kit replaces the multi-tool, multi-step manual process with a single cohesive script:
 
-- **Multi-Chain Visibility**: Audit balances across all chains in one pass
-- **Token Consolidation**: Swap any non-USDC holdings to USDC before bridging
-- **Threshold-Based Consolidation**: Only move funds when excess is meaningful
-- **Minimum Balance Protection**: Never drain a chain below its operational floor
-- **Zero Bridge Fees**: SLOW mode uses Circle's CCTP with no protocol fee
-- **Scheduled Automation**: Run as a daily cron job with zero manual intervention
+| Challenge | How App Kit Solves It |
+|---|---|
+| No single view of balances across chains | One `getWalletTokenBalances` call returns all tokens across all chains |
+| Non-USDC tokens require per-chain DEX integration | `kit.swap()` handles any-to-USDC conversion with token aliases, no contract addresses |
+| Bridging requires selecting protocols and managing attestations | `kit.bridge()` abstracts CCTP entirely — one call per chain, automatic retry |
+| Daily FAST bridging is costly at $5–$10 per bridge | SLOW mode uses CCTP with zero protocol fee — same security, settle in ~20 min |
+| Manual operations risk wrong amounts, wrong chains | Threshold and minimum balance logic runs automatically — no human in the loop |
 
-### Benefits of This Implementation
+### Benefits
 
-**1. Simple APIs for Complex Operations**
-- **Swap**: One call converts any stablecoin (USDT, DAI) to USDC on the same chain
-- **Bridge**: One call moves USDC across any supported chain pair
-- **SLOW mode**: Free transfers — Circle's CCTP charges no protocol fee in slow mode
-- **No contract addresses**: Use token aliases (`USDC`, `USDT`, `DAI`) throughout
+- **97% cost reduction** vs manual daily FAST bridging across 4–5 chains
+- **Zero manual intervention** — schedule as a cron job, runs and reports without human input
+- **No chain goes dark** — minimum balance protection ensures every chain retains its operational floor
+- **Drop-in wallet flexibility** — swap Circle Wallet for Viem, Ethers, or a custom adapter without changing the treasury logic
 
-> **Note**: This example uses Circle Wallet for managed key custody.
-> - Replace `createCircleWalletAdapter` with your own wallet provider (Viem, Ethers, or custom) if needed — the treasury logic stays the same
-> - If using a different wallet provider, replace `getWalletTokenBalances` calls with your provider's equivalent balance-fetching method
-
-**2. Significant Cost Savings Through Automation**
-- SLOW bridge mode costs $0 in protocol fees (vs ~$10 FAST mode per bridge)
-- Weekly consolidation vs daily manual bridging: 7× fewer transactions
-- Threshold filtering eliminates micro-transactions on small excess balances
-- **Overall result: 97% cost reduction vs manual daily FAST bridging**
+> **Note**: This example uses Circle Wallet for managed key custody. Replace `createCircleWalletAdapter` with your own wallet provider (Viem, Ethers, or custom) if needed — the treasury logic stays the same.
 
 ---
 
