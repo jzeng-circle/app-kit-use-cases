@@ -14,45 +14,38 @@ Use case documentation bridges the gap between code and understanding. It helps 
 
 ### 1. Title and Business Case
 
-Start with a clear title and business explanation:
+Start by describing the scenario — what this use case does — before discussing any challenges or solutions:
 
 ```markdown
 # [Use Case Name]
 
 ## Business Case
 
-### The Problem
+[Describe the use case as a scenario: what it does, what flows where, who is involved.
+Do not open with problems or pain points. Write it as "X is the process of Y" or
+"In this use case, a platform does Z." Keep it to 2–4 sentences.]
 
-You're building [business context] where:
-- **Actor 1** wants to [need/pain point]
-- **Actor 2** wants to [different need/pain point]
-- **Your platform** needs to [platform requirement]
-- **Challenge** [key challenge to solve]
+### Who This Is For
 
-### The Solution
+- **[Developer profile 1]** — [one line describing their specific use of this]
+- **[Developer profile 2]** — [one line describing their specific use of this]
+- **[Developer profile 3]** — [one line describing their specific use of this]
 
-[Brief solution description] that:
-1. [Key capability 1]
-2. [Key capability 2]
-3. [Key capability 3]
-4. [Key capability 4]
+### Key Features
 
-### Cost Savings (if applicable)
+- **[Feature name]** — [one line describing what it does and why it matters]
+- **[Feature name]** — [one line describing what it does and why it matters]
+- **[Feature name]** — [one line describing what it does and why it matters]
 
-**Without Optimization:**
-- [Cost breakdown]
-- **Total: $X**
-
-**With Optimization:**
-- [Improved cost breakdown]
-- **Total: $Y (Z% savings!)**
+> **Note**: [Any adapter/wallet flexibility note if applicable.]
 ```
 
 **Guidelines:**
-- Use bullet points for clarity
-- Bold key actors (Customer, Merchant, Platform)
-- Quantify benefits when possible
-- Keep it under 20 lines
+- Business Case paragraph: describe the scenario neutrally, not as a problem statement
+- Who This Is For: 2–4 developer profiles, each on one line, bold the profile type
+- Key Features: bullet list only — no tables, no separate benefits section
+- Each feature bullet: bold the feature name, then one plain-English sentence after the dash
+- Do not duplicate content between Key Features and any other section
 
 ---
 
