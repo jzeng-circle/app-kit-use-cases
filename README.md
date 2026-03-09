@@ -4,10 +4,10 @@ Production-ready examples demonstrating real-world stablecoin operations using [
 
 ## Use Cases
 
-### 01. Stablecoin Acquiring (Payment Processing)
+### 01. Stablecoin Acquiring
 Accept payments in any token (USDT, DAI, ETH) and settle stable USDC to merchants on their preferred chain, with built-in platform fee collection.
 
-**Read More**: [app-kit-use-cases/01-PAYMENT-PROCESSOR.md](./app-kit-use-cases/01-PAYMENT-PROCESSOR.md)
+**Read More**: [app-kit-use-cases/01-STABLECOIN-ACQUIRING.md](./app-kit-use-cases/01-STABLECOIN-ACQUIRING.md)
 
 ---
 
@@ -32,17 +32,17 @@ cp .env.example .env
 
 ```bash
 # Stablecoin acquiring
-npm run app-kit:payment
+npm run app-kit:stablecoin-acquiring
 
 # Treasury management
-npm run app-kit:treasury
+npm run app-kit:treasury-management
 
 ```
 
 Or run any file directly:
 
 ```bash
-npx tsx app-kit-use-cases/01-payment-processor.ts
+npx tsx app-kit-use-cases/01-stablecoin-acquiring.ts
 ```
 
 ## Environment Variables

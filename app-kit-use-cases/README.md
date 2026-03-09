@@ -14,7 +14,7 @@ Each use case file starts with:
 
 ---
 
-## 1. Payment Processor (`01-payment-processor.ts`)
+## 1. Stablecoin Acquiring (`01-stablecoin-acquiring.ts`)
 
 ### Business Scenario
 Build a payment platform where customers pay with any crypto, but merchants receive USDC on their preferred blockchain.
@@ -28,7 +28,7 @@ Build a payment platform where customers pay with any crypto, but merchants rece
 
 ### Run Example
 ```bash
-npm run app-kit:payment-processor
+npm run app-kit:stablecoin-acquiring
 ```
 
 ### Use Cases
@@ -39,7 +39,7 @@ npm run app-kit:payment-processor
 
 ---
 
-## 2. Treasury Management (`02-treasury-management.ts`)
+## 2. Multi-Chain Treasury Management (`02-treasury-management.ts`)
 
 ### Business Scenario
 Manage company treasury with USDC across multiple blockchains. Automatically consolidate funds to main treasury while maintaining operational balances on each chain.
@@ -53,7 +53,7 @@ Manage company treasury with USDC across multiple blockchains. Automatically con
 
 ### Run Example
 ```bash
-npm run app-kit:treasury
+npm run app-kit:treasury-management
 ```
 
 ### Use Cases
@@ -159,8 +159,8 @@ cp .env.example .env
 
 ```bash
 # Choose a use case
-npm run app-kit:payment-processor
-npm run app-kit:treasury
+npm run app-kit:stablecoin-acquiring
+npm run app-kit:treasury-management
 npm run app-kit:dex
 npm run app-kit:merchant
 npm run app-kit:rebalancing

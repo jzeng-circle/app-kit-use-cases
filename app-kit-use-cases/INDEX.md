@@ -6,11 +6,11 @@ Navigate through production-ready examples that demonstrate real-world blockchai
 
 ## 🎯 Production Use Cases
 
-### 01. Stablecoin Acquiring (Payment Processing)
+### 01. Stablecoin Acquiring
 
 **Files**:
-- `01-payment-processor.ts` - Implementation code
-- `01-PAYMENT-PROCESSOR.md` - Complete guide with diagrams
+- `01-stablecoin-acquiring.ts` - Implementation code
+- `01-STABLECOIN-ACQUIRING.md` - Complete guide with diagrams
 
 **Business Problem**:
 
@@ -28,7 +28,7 @@ Accept payments in any cryptocurrency (USDT, DAI, ETH) while merchants receive s
 
 Payment gateways, e-commerce platforms, merchant acquiring, crypto checkout systems
 
-**Read More**: [01-PAYMENT-PROCESSOR.md](./01-PAYMENT-PROCESSOR.md)
+**Read More**: [01-STABLECOIN-ACQUIRING.md](./01-STABLECOIN-ACQUIRING.md)
 
 ---
 
@@ -70,7 +70,7 @@ Corporate treasuries, DAO management, DEX operators, DeFi protocols, multi-chain
 
 Start with Use Case 01: Stablecoin Acquiring which includes complete business case explanation, visual wallet and fund flow diagrams, step-by-step code walkthrough, and copy-paste ready implementation.
 
-Read the guide: [01-PAYMENT-PROCESSOR.md](./01-PAYMENT-PROCESSOR.md)
+Read the guide: [01-STABLECOIN-ACQUIRING.md](./01-STABLECOIN-ACQUIRING.md)
 
 ### For Production Implementation
 

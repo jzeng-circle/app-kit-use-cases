@@ -457,7 +457,7 @@ End with actionable next steps:
 [number]-[use-case-name].md
 
 Examples:
-01-PAYMENT-PROCESSOR.md
+01-STABLECOIN-ACQUIRING.md
 02-TREASURY-MANAGEMENT.md
 03-CROSS-CHAIN-DEX.md
 ```

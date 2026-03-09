@@ -425,7 +425,7 @@ if (operations.length > 0) {
 
 ```bash
 # Run with tsx
-npm run app-kit:treasury
+npm run app-kit:treasury-management
 
 # Or run directly
 npx tsx app-kit-use-cases/02-treasury-management.ts
@@ -435,7 +435,7 @@ npx tsx app-kit-use-cases/02-treasury-management.ts
 
 ```bash
 # Run at 2 AM every night (low gas hours)
-0 2 * * * cd /your/project && npx tsx app-kit-use-cases/02-treasury-management.ts >> /var/log/treasury.log 2>&1
+0 2 * * * cd /your/project && npm run app-kit:treasury-management >> /var/log/treasury.log 2>&1
 ```
 
 ---

@@ -80,7 +80,7 @@ await kit.swap({
 
 ### Workflow Examples (5 use cases)
 
-#### 1. Payment Processor
+#### 1. Stablecoin Acquiring
 Accept customer payment in any token, convert to USDC, bridge to merchant.
 ```typescript
 async function processPayment(
@@ -100,7 +100,7 @@ async function processPayment(
 }
 ```
 
-#### 2. Treasury Management
+#### 2. Multi-Chain Treasury Management
 Consolidate funds from multiple chains to central treasury.
 ```typescript
 async function consolidateTreasury(
@@ -334,8 +334,8 @@ async function executeBatch(operations: Operation[]) {
 - ✅ Batch operation execution
 
 ### Real-world Workflows
-- ✅ Payment processing
-- ✅ Treasury management
+- ✅ Stablecoin acquiring
+- ✅ Multi-chain treasury management
 - ✅ Cross-chain DEX functionality
 - ✅ Merchant payment flows
 - ✅ Liquidity rebalancing

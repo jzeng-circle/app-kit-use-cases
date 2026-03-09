@@ -1,5 +1,5 @@
 /**
- * Payment Processor with Aggregation & Batch Processing
+ * Stablecoin Acquiring with Aggregation & Batch Processing
  *
  * Flow:
  * 1. Customer pays to temporary address → Order confirmed immediately
@@ -337,7 +337,7 @@ async function dailySettlementJob() {
 
 async function processSinglePayment() {
   console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   PAYMENT PROCESSOR - SINGLE PAYMENT   ║');
+  console.log('║   STABLECOIN ACQUIRING - SINGLE PAYMENT ║');
   console.log('╚════════════════════════════════════════╝');
 
   const order: PaymentOrder = {
@@ -378,7 +378,7 @@ async function processSinglePayment() {
 
 async function runBatchProcessing() {
   console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   PAYMENT PROCESSOR - BATCH JOBS       ║');
+  console.log('║   STABLECOIN ACQUIRING - BATCH JOBS    ║');
   console.log('╚════════════════════════════════════════╝');
 
   // Run hourly swap job
@@ -396,7 +396,7 @@ async function runBatchProcessing() {
 
 function showCostComparison() {
   console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   COST COMPARISON (100 payments)       ║');
+  console.log('║   STABLECOIN ACQUIRING - COST SAVINGS  ║');
   console.log('╚════════════════════════════════════════╝');
   console.log('\nIndividual Processing:');
   console.log('  Swaps: 100 × $15 = $1,500');
@@ -421,7 +421,7 @@ async function main() {
     return;
   }
 
-  console.log('\n🚀 Payment Processor Ready');
+  console.log('\n🚀 Stablecoin Acquiring Ready');
   console.log('   Internal Wallet: ' + INTERNAL_WALLET_ID);
   console.log('   Fee Wallet: ' + PLATFORM_FEE_WALLET);
   console.log('   Platform Fee: ' + PLATFORM_FEE_PERCENT + '%\n');

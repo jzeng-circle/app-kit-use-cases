@@ -516,7 +516,7 @@ examples/
 
 ```typescript
 /**
- * USE CASE: Payment Processor
+ * USE CASE: Stablecoin Acquiring
  *
  * ===========================
  * BUSINESS SCENARIO
@@ -569,7 +569,7 @@ async function processPayment(order: Order, merchant: Merchant): Promise<Receipt
 
 ```typescript
 /**
- * Payment Processor
+ * Stablecoin Acquiring
  *
  * Flow:
  * 1. Customer pays to temporary address

@@ -520,11 +520,10 @@ runPaymentFlow().catch(console.error);
 ### Run the Example
 
 ```bash
-# Save the code above to payment-processor.ts
-node payment-processor.ts
+npm run app-kit:stablecoin-acquiring
 
-# Or use ts-node
-npx ts-node payment-processor.ts
+# Or run directly
+npx tsx app-kit-use-cases/01-stablecoin-acquiring.ts
 ```
 
 ---
@@ -574,10 +573,10 @@ npx ts-node payment-processor.ts
 
 - [Circle App Kit Documentation](https://developers.circle.com/app-kit)
 - [Circle Wallet API](https://developers.circle.com/wallets)
-- [Full Example Code](./01-payment-processor.ts)
+- [Full Example Code](./01-stablecoin-acquiring.ts)
 - [Fund Flow Diagram](./FUND_FLOW_DIAGRAM.md)
 - [Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)
 
 ---
 
-**Questions?** Check the [integration notes](./01-payment-processor.ts#L400-L450) in the code or reach out to Circle support.
+**Questions?** Check the [integration notes](./01-stablecoin-acquiring.ts#L400-L450) in the code or reach out to Circle support.

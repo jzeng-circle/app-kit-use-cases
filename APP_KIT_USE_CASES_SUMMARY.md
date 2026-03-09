@@ -9,7 +9,7 @@ sdk-samples/examples/app-kit/
 
 ## 🎯 5 Production-Ready Use Cases
 
-### 1. Payment Processor (`01-payment-processor.ts`)
+### 1. Stablecoin Acquiring (`01-stablecoin-acquiring.ts`)
 **Business Problem**: Accept any crypto, deliver USDC to merchants
 
 **What It Does**:
@@ -34,7 +34,7 @@ Merchant Receives USDC
 
 **Run It**:
 ```bash
-npm run app-kit:payment-processor
+npm run app-kit:stablecoin-acquiring
 ```
 
 **Perfect For**:
@@ -45,7 +45,7 @@ npm run app-kit:payment-processor
 
 ---
 
-### 2. Treasury Management (`02-treasury-management.ts`)
+### 2. Multi-Chain Treasury Management (`02-treasury-management.ts`)
 **Business Problem**: USDC scattered across many chains, need to consolidate
 
 **What It Does**:
@@ -70,7 +70,7 @@ Verify & Report
 
 **Run It**:
 ```bash
-npm run app-kit:treasury
+npm run app-kit:treasury-management
 ```
 
 **Perfect For**:
@@ -199,8 +199,8 @@ npm run app-kit:rebalancing
 
 | Use Case | Complexity | Operations Used | Best For | Monetization |
 |----------|-----------|-----------------|----------|--------------|
-| Payment Processor | Medium | Swap + Bridge + Send | Payment gateways | 1-3% per transaction |
-| Treasury Management | Low | Bridge only | Corporate finance | Cost savings |
+| Stablecoin Acquiring | Medium | Swap + Bridge + Send | Payment gateways | 1-3% per transaction |
+| Multi-Chain Treasury Management | Low | Bridge only | Corporate finance | Cost savings |
 | Cross-Chain DEX | High | Swap + Bridge + Swap | Trading platforms | 0.1-0.5% per swap |
 | Merchant Payment | Medium | Swap + Send/Bridge | E-commerce | 2-3% processing fee |
 | Liquidity Rebalancing | Medium | Bridge only | DeFi protocols | Operational efficiency |
@@ -221,11 +221,11 @@ cp .env.example .env
 
 ### 2. Choose Your Use Case
 ```bash
-# For payment processing
-npm run app-kit:payment-processor
+# For stablecoin acquiring
+npm run app-kit:stablecoin-acquiring
 
 # For treasury management
-npm run app-kit:treasury
+npm run app-kit:treasury-management
 
 # For DEX functionality
 npm run app-kit:dex
@@ -249,7 +249,7 @@ Each file includes:
 
 ## 💰 Business Model Examples
 
-### For Payment Processors
+### For Stablecoin Acquiring
 - **Revenue**: 2-3% per transaction
 - **Example**: $1M monthly volume = $20-30k revenue
 - **Competitive vs**: Stripe (2.9% + $0.30), PayPal (2.9% + $0.30)
@@ -273,13 +273,13 @@ Each file includes:
 
 ## 🎯 Which Use Case For You?
 
-### Choose Payment Processor If:
+### Choose Stablecoin Acquiring If:
 - Building payment gateway
 - Need to accept any crypto
 - Merchants want stable settlements
 - Want simple integration
 
-### Choose Treasury Management If:
+### Choose Multi-Chain Treasury Management If:
 - Managing funds across chains
 - Need consolidation automation
 - CFO needs reporting
@@ -307,13 +307,13 @@ Each file includes:
 
 ## 📈 Success Metrics
 
-### Payment Processor
+### Stablecoin Acquiring
 - Transaction success rate: >98%
 - Average processing time: <2 min (FAST)
 - Customer satisfaction: High
 - Merchant retention: >90%
 
-### Treasury Management
+### Multi-Chain Treasury Management
 - Consolidation frequency: Daily/Weekly
 - Cost savings: 50-80% vs manual
 - Time saved: 10-20 hours/month
