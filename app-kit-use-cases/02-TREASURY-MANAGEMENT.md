@@ -10,24 +10,14 @@ Multi-chain treasury management is the process of monitoring USDC balances acros
 - **DAOs and multi-chain platforms** — sweeping accumulated fees and rewards to a master wallet on a schedule
 - **DEX operators and DeFi protocols** — maintaining per-chain USDC ratios to support liquidity operations
 
-### The Solution
+### Key Features
 
-App Kit replaces the multi-tool, multi-step manual process with a single cohesive script:
-
-| Challenge | How App Kit Solves It |
-|---|---|
-| No single view of balances across chains | One `getWalletTokenBalances` call returns all tokens across all chains |
-| Non-USDC tokens require per-chain DEX integration | `kit.swap()` handles any-to-USDC conversion with token aliases, no contract addresses |
-| Bridging requires selecting protocols and managing attestations | `kit.bridge()` abstracts CCTP entirely — one call per chain, automatic retry |
-| Daily FAST bridging is costly at $5–$10 per bridge | SLOW mode uses CCTP with zero protocol fee — same security, settle in ~20 min |
-| Manual operations risk wrong amounts, wrong chains | Threshold and minimum balance logic runs automatically — no human in the loop |
-
-### Benefits
-
-- **97% cost reduction** vs manual daily FAST bridging across 4–5 chains
-- **Zero manual intervention** — schedule as a cron job, runs and reports without human input
-- **No chain goes dark** — minimum balance protection ensures every chain retains its operational floor
-- **Drop-in wallet flexibility** — swap Circle Wallet for Viem, Ethers, or a custom adapter without changing the treasury logic
+- **Single-call balance snapshot** — fetch all token balances across all chains in one API call, no per-chain polling
+- **Optional token normalization** — swap any non-USDC tokens to USDC on each chain before consolidating, keeping the treasury in a single asset
+- **Threshold-based consolidation** — only moves funds when excess exceeds a configurable minimum, avoiding micro-transactions that cost more in gas than they move
+- **Minimum balance protection** — every chain retains a configurable operational floor; no chain is ever fully drained
+- **Zero-fee bridging with SLOW mode** — uses CCTP's slow path which carries no protocol fee, settling in ~20 minutes
+- **Cron-ready job structure** — the consolidation function runs end-to-end and can be scheduled directly without additional orchestration
 
 > **Note**: This example uses Circle Wallet for managed key custody. Replace `createCircleWalletAdapter` with your own wallet provider (Viem, Ethers, or custom) if needed — the treasury logic stays the same.
 

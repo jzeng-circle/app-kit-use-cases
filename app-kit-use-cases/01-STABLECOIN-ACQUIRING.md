@@ -10,24 +10,14 @@ Stablecoin acquiring is the process of collecting payments from customers who pa
 - **E-commerce platforms** — adding multi-token crypto checkout to an existing payment stack
 - **Fintech companies** — launching a stablecoin payment product with built-in fee monetization
 
-### The Solution
+### Key Features
 
-App Kit addresses each step of the pipeline directly — replacing multi-chain DEX integrations, custom bridging logic, and manual wallet management with simple, unified API calls:
-
-| Challenge | How App Kit Solves It |
-|---|---|
-| Customers pay with many tokens across many chains | `kit.swap()` converts any token to USDC with a single call, using token aliases — no contract addresses needed |
-| Gas costs multiply with payment volume | Batch all swaps per token per hour into one transaction — 80–90% gas savings vs individual swaps |
-| Managed wallet infrastructure is expensive to build | Circle Wallet adapter handles wallet creation, fund sweeping, and key custody out of the box |
-| Fee collection requires a separate transaction | Built-in `customFee` parameter deducts platform fees within the same bridge transaction |
-| Settlement to merchant's preferred chain is a multi-step manual process | `kit.bridge()` handles cross-chain settlement in one call, with automatic retry on failure |
-
-### Benefits
-
-- **85% cost reduction at scale** — batch swaps and settlements eliminate per-transaction gas overhead
-- **Instant order confirmation** — funds are aggregated immediately on payment receipt; swap and settlement run asynchronously
-- **Flexible settlement schedule** — daily, weekly, or on-demand payouts with no code changes
-- **Drop-in wallet flexibility** — swap Circle Wallet for Viem, Ethers, or a custom adapter without changing the acquiring logic
+- **Multi-token payment acceptance** — accept USDT, DAI, ETH, or any supported token without managing per-token contract addresses
+- **Temporary wallets per payment** — each order gets a dedicated address, keeping funds isolated until aggregation
+- **Batch swaps for cost efficiency** — all tokens of the same type are converted to USDC in a single hourly transaction, saving 80–90% in gas vs per-payment swaps
+- **Built-in platform fee collection** — fees are deducted within the same bridge transaction using the `customFee` parameter, no separate transfer needed
+- **Cross-chain merchant settlement** — `kit.bridge()` delivers USDC to the merchant's preferred chain in one call
+- **Flexible settlement schedule** — daily, weekly, or on-demand payouts without changing any code
 
 > **Note**: This example uses Circle Wallet for illustration. You can use any wallet adapter (Viem, Ethers, or custom) with App Kit.
 
