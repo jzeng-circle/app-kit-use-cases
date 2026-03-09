@@ -16,7 +16,7 @@ Stablecoin acquiring is the process of collecting payments from customers who pa
 - **Temporary wallets per payment** — each order gets a dedicated address, keeping funds isolated until aggregation
 - **Batch swaps for cost efficiency** — all tokens of the same type are converted to USDC in a single hourly transaction, saving 80–90% in gas vs per-payment swaps
 - **Built-in platform fee collection** — fees are deducted within the same bridge transaction using the `customFee` parameter, no separate transfer needed
-- **Cross-chain merchant settlement** — `kit.bridge()` delivers USDC to the merchant's preferred chain in one call
+- **Direct settlement to external merchant wallets** — `recipientAddress` routes USDC directly to the merchant's wallet on the destination chain; the merchant does not need native tokens to receive it
 - **Flexible settlement schedule** — daily, weekly, or on-demand payouts without changing any code
 
 > **Note**: This example uses Circle Wallet for illustration. You can use any wallet adapter (Viem, Ethers, or custom) with App Kit.
@@ -233,12 +233,12 @@ async function batchSwapToUSDC(
 **What this does:**
 - Runs daily or when merchant requests withdrawal
 - Calculates total amount owed to merchant from multiple orders
-- Bridges funds to merchant's preferred chain
-- Collects platform fees using `customFee` parameter (no separate transaction!)
-- Uses SLOW transfer mode for cost savings
-- Returns all transaction hashes for tracking
+- Bridges USDC directly to the merchant's external wallet address using `recipientAddress`
+- The merchant wallet does not need native tokens to receive USDC — CCTP mints directly to the address
+- Collects platform fees in the same bridge transaction using `customFee`
+- Uses SLOW transfer mode for zero protocol fees
 
-**Example:** Merchant has 10 orders totaling $1,000 → 1 bridge transaction + fee collection (instead of 11 separate transactions)
+**Example:** Merchant has 10 orders totaling $1,000 → 1 bridge transaction settles to merchant + collects fee (instead of 11 separate transactions)
 
 ```typescript
 async function settleMerchant(
@@ -252,7 +252,9 @@ async function settleMerchant(
     sum + calculateAmounts(o.orderAmount).fee, 0
   );
 
-  // Bridge with fee collection in ONE transaction
+  // Bridge directly to the merchant's external wallet address.
+  // recipientAddress overrides the adapter's own address so USDC is minted
+  // to the merchant on the destination chain — no native tokens required.
   const bridgeResult = await kit.bridge({
     from: { adapter: internalWalletAdapter, chain: 'Ethereum' },
     to: {

@@ -241,9 +241,8 @@ async function settleMerchant(
 
   const txHashes: string[] = [];
 
-  // Bridge to merchant with fee collection in ONE transaction
   if (merchant.settlementChain === 'Ethereum') {
-    // Same chain - send to merchant and collect fee separately
+    // Same chain — send directly to the merchant's external wallet address
     const sendResult = await kit.send({
       from: { adapter: internalWalletAdapter, chain: 'Ethereum' },
       to: merchant.settlementAddress,
@@ -263,7 +262,10 @@ async function settleMerchant(
     console.log(`  Sent: ${sendResult.txHash}`);
     console.log(`  Fee: ${feeResult.txHash}`);
   } else {
-    // Different chain - bridge with custom fee (fee collected in ONE transaction)
+    // Cross-chain — bridge directly to the merchant's external wallet address.
+    // recipientAddress overrides the adapter's own address so USDC is minted
+    // to the merchant on the destination chain. The merchant wallet does not
+    // need native tokens to receive USDC via CCTP.
     const bridgeResult = await kit.bridge({
       from: { adapter: internalWalletAdapter, chain: 'Ethereum' },
       to: {
@@ -273,7 +275,7 @@ async function settleMerchant(
       },
       amount: totalAmount.toFixed(2),
       config: {
-        transferSpeed: 'SLOW', // Use SLOW for cost savings
+        transferSpeed: 'SLOW',
         customFee: {
           value: totalFees.toFixed(2),
           recipientAddress: PLATFORM_FEE_WALLET
