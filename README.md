@@ -14,13 +14,17 @@ It works with multiple wallet adapters (Viem, Ethers, Solana, Circle Wallets) an
 
 ## Use Cases
 
-### 01. [Stablecoin Acquiring](./app-kit-use-cases/01-STABLECOIN-ACQUIRING.md)
+### 01. Stablecoin Acquiring
 Accept payments in any token (USDT, DAI, ETH) from any chain and settle USDC to merchants on their preferred chain, with batch processing and built-in fee collection.
-[[source]](./app-kit-use-cases/01-stablecoin-acquiring.ts)
 
-### 02. [Multi-Chain Treasury Management](./app-kit-use-cases/02-TREASURY-MANAGEMENT.md)
+- Guide: [`01-STABLECOIN-ACQUIRING.md`](./app-kit-use-cases/01-STABLECOIN-ACQUIRING.md)
+- Code: [`01-stablecoin-acquiring.ts`](./app-kit-use-cases/01-stablecoin-acquiring.ts)
+
+### 02. Multi-Chain Treasury Management
 Monitor USDC balances across chains and automatically consolidate excess funds to a central treasury using SLOW mode for zero bridge fees.
-[[source]](./app-kit-use-cases/02-treasury-management.ts)
+
+- Guide: [`02-TREASURY-MANAGEMENT.md`](./app-kit-use-cases/02-TREASURY-MANAGEMENT.md)
+- Code: [`02-treasury-management.ts`](./app-kit-use-cases/02-treasury-management.ts)
 
 ## Setup
 
