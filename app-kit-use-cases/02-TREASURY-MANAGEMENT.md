@@ -26,27 +26,17 @@ Multi-chain treasury management is the process of monitoring USDC balances acros
 ## Fund Flow Diagram
 
 ```mermaid
-flowchart TD
-    subgraph sources["Step 1 — Check Balances + Swap to USDC (optional)"]
-        B["Base\nUSDT $3,000 + USDC $15,000\ntarget $10k"]
-        A["Arbitrum\nDAI $1,500 + USDC $12,500\ntarget $10k"]
-        P["Polygon\nUSDC $8,000\ntarget $10k"]
-        O["Optimism\nUSDC $5,500\ntarget $10k"]
-    end
+flowchart LR
+    B["Base\nUSDC $18,000 · target $10k"]
+    A["Arbitrum\nUSDC $14,000 · target $10k"]
+    P["Polygon\nUSDC $8,000 · target $10k"]
+    O["Optimism\nUSDC $5,500 · target $10k"]
+    T["Treasury\nEthereum\ntarget $50k"]
 
-    B -->|"kit.swap() USDT → USDC"| B
-    A -->|"kit.swap() DAI → USDC"| A
-
-    subgraph plan["Step 2 — Plan Consolidation"]
-        B -->|"excess $8k → move $5k\n(keeps $10k minimum)"| T
-        A -->|"excess $4k → move $2.5k\n(keeps $10k minimum)"| T
-        P -.->|"deficit — skip"| P
-        O -.->|"excess $500 < threshold — skip"| O
-    end
-
-    subgraph execute["Step 3 — Execute (SLOW mode, $0 fees)"]
-        T["Treasury\nEthereum\ntarget $50k"]
-    end
+    B -->|"bridge $5,000\nSLOW · $0 fee"| T
+    A -->|"bridge $2,500\nSLOW · $0 fee"| T
+    P -. "below target · skip" .- T
+    O -. "below threshold · skip" .- T
 ```
 
 ---
