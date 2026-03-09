@@ -2,9 +2,13 @@
 
 ## Business Case
 
-Any organization operating on-chain at scale eventually ends up with stablecoin balances scattered across multiple chains. Fees accumulate on Base, liquidity sits idle on Arbitrum, and the main treasury on Ethereum remains underfunded — while a team member logs into multiple block explorers, copies numbers into a spreadsheet, and manually decides what to move where. At 4–5 chains and daily bridging, this operational overhead compounds fast: hours of manual work per week, hundreds of dollars per month in bridge fees, and real exposure to human error on every transaction.
+Multi-chain treasury management is the process of monitoring USDC balances across multiple chains and automatically consolidating excess funds into a single master treasury. A treasury wallet might accumulate balances on Base, Arbitrum, Polygon, and Optimism through normal operations — fees collected, payments received, liquidity deployed. Rather than managing each chain manually, a treasury job runs on a schedule: it reads all balances in one call, converts any non-USDC tokens to USDC on each chain, then bridges excess funds to the main treasury using SLOW mode for zero protocol fees, while keeping every chain above a minimum operational balance.
 
-This use case is designed for **corporate treasuries and fintech companies** that need consolidated stablecoin reporting across chains, **DEX operators and DeFi protocols** maintaining per-chain liquidity ratios, and **DAOs and multi-chain platforms** accumulating fees and rewards across chains that need automated, auditable sweeps to a master wallet. It demonstrates how to build a treasury management job that reads all chain balances in a single API call, converts any non-USDC tokens to USDC, and bridges excess funds to the main treasury — with minimum balance protection, threshold filtering, and zero protocol fees.
+### Who This Is For
+
+- **Corporate treasuries** — consolidating on-chain stablecoin balances into a single reporting wallet
+- **DAOs and multi-chain platforms** — sweeping accumulated fees and rewards to a master wallet on a schedule
+- **DEX operators and DeFi protocols** — maintaining per-chain USDC ratios to support liquidity operations
 
 ### The Solution
 

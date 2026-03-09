@@ -2,9 +2,13 @@
 
 ## Business Case
 
-Crypto payment acceptance is an increasingly common requirement for PSPs, large merchants, and fintech platforms — but building the infrastructure to do it reliably is far more complex than it looks. A customer may send USDT from Ethereum while the merchant wants to receive USDC on Base. Between those two points lies a chain of on-chain operations: token detection, conversion, aggregation, fee deduction, cross-chain bridging, and final settlement — each with its own failure modes. At volume, processing each payment individually also becomes cost-prohibitive, as gas fees compound across hundreds or thousands of daily transactions.
+Stablecoin acquiring is the process of collecting payments from customers who pay with different tokens across different chains, and settling the equivalent value in USDC to the merchant. A customer might pay with USDT on Ethereum, another with DAI on Polygon, and another with native ETH — while every merchant receives clean USDC on their preferred chain, with a platform fee deducted automatically. At scale, payments are aggregated into a shared internal wallet, converted to USDC in hourly batches, and settled to merchants daily or on demand.
 
-This use case is designed for **Payment Service Providers (PSPs)** building crypto acquiring infrastructure, **e-commerce platforms and large merchants** adding crypto checkout to existing payment stacks, and **fintech companies** launching stablecoin payment products. It demonstrates how to build a production-grade acquiring pipeline that accepts any token on any supported chain, aggregates funds into an internal wallet, converts them to USDC in batches, and settles to merchants with platform fee collection — all through a small set of unified App Kit calls.
+### Who This Is For
+
+- **Payment Service Providers (PSPs)** — building crypto acquiring infrastructure for merchant networks
+- **E-commerce platforms** — adding multi-token crypto checkout to an existing payment stack
+- **Fintech companies** — launching a stablecoin payment product with built-in fee monetization
 
 ### The Solution
 
