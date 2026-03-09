@@ -1,6 +1,6 @@
 # app-kit-use-cases
 
-Production-ready TypeScript examples for real-world stablecoin operations using [Circle App Kit](https://developers.circle.com/app-kit).
+This project demonstrates real-world business use cases built with [Circle App Kit](https://developers.circle.com/app-kit). Each example is designed to show developers what is possible with App Kit — from accepting crypto payments to managing multi-chain treasuries — and to give them a working, production-ready starting point they can adapt directly in their own products.
 
 ## About Circle App Kit
 
