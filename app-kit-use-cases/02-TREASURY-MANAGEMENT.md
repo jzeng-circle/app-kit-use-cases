@@ -25,8 +25,8 @@ Multi-chain treasury management is the process of keeping USDC balances on opera
 
 ```mermaid
 flowchart LR
-    B["Base\nUSDC $1,800\nupper $1,500 · target $1,000"]
-    A["Arbitrum\nUSDC $350\nlower $500 · target $1,000"]
+    B["Base\nUSDC $1,800\ntarget $1,000"]
+    A["Arbitrum\nUSDC $350\ntarget $1,000"]
     P["Polygon\nUSDC $980\ntarget $1,000"]
     T["Treasury\nOptimism"]
 
