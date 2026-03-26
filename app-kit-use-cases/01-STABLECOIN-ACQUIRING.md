@@ -2,7 +2,7 @@
 
 ## Business Case
 
-Stablecoin acquiring is the process of collecting payments from customers who pay with different tokens across different chains, and settling the equivalent value in USDC to the merchant. A customer might pay with USDT on Ethereum, another with DAI on Polygon, and another with native ETH — while every merchant receives clean USDC on their preferred chain, with a platform fee deducted automatically. At scale, payments are aggregated into a shared internal wallet, converted to USDC in hourly batches, and settled to merchants daily or on demand.
+Stablecoin acquiring is the process of collecting payments from customers who pay with USDC or USDT across different chains, and settling the equivalent value in USDC to the merchant. A customer might pay with USDT on Ethereum while the merchant receives USDC on Base — with a platform fee deducted automatically. At scale, payments are aggregated into a shared internal wallet, converted to USDC in hourly batches, and settled to merchants daily or on demand.
 
 ### Who This Is For
 
@@ -12,14 +12,12 @@ Stablecoin acquiring is the process of collecting payments from customers who pa
 
 ### Key Features
 
-- **Multi-token payment acceptance** — accept USDT, DAI, ETH, or any supported token without managing per-token contract addresses
+- **Multi-chain payment acceptance** — accept USDC or USDT on any supported chain; App Kit uses built-in token aliases so no contract addresses to manage
 - **Temporary wallets per payment** — each order gets a dedicated address, keeping funds isolated until aggregation
 - **Batch swaps for cost efficiency** — all tokens of the same type are converted to USDC in a single hourly transaction, saving 80–90% in gas vs per-payment swaps
 - **Built-in platform fee collection** — fees are deducted within the same bridge transaction using the `customFee` parameter, no separate transfer needed
 - **Direct settlement to external merchant wallets** — `recipientAddress` routes USDC directly to the merchant's wallet on the destination chain; the merchant does not need native tokens to receive it
 - **Flexible settlement schedule** — daily, weekly, or on-demand payouts without changing any code
-
-> **Note**: This example uses Circle Wallet for illustration. You can use any wallet adapter (Viem, Ethers, or custom) with App Kit.
 
 ---
 
@@ -27,411 +25,195 @@ Stablecoin acquiring is the process of collecting payments from customers who pa
 
 ```mermaid
 sequenceDiagram
-    participant C as Customer<br/>(USDT · Ethereum)
-    participant T as Temporary Wallet<br/>(per order)
-    participant I as Internal Wallet<br/>(aggregation)
+    participant C as Customer
+    participant T as Temp Wallet
+    participant I as Internal Wallet
     participant F as Fee Wallet
-    participant M as Merchant Wallet<br/>(USDC · Base)
+    participant M as Merchant Wallet
 
-    Note over C,M: Step 1 — Create Payment Session
+    Note over C,M: Step 1 - Create Payment Session
     C->>T: Send $102.50 USDT
 
-    Note over C,M: Step 2 — Aggregate (immediate)
+    Note over C,M: Step 2 - Aggregate (immediate)
     T->>I: Sweep $102.50 USDT
-    Note right of C: Order confirmed ✓
+    Note right of C: Order confirmed
 
-    Note over C,M: Step 3 — Batch Swap (hourly)
-    I->>I: kit.swap() · USDT → USDC (all orders, 1 tx)
+    Note over C,M: Step 3 - Batch Swap (hourly, USDT only)
+    Note over I: kit.swap() USDT to USDC
 
-    Note over C,M: Step 4 — Settle (daily / on-demand)
-    I->>M: kit.bridge() · $100.00 USDC
-    I->>F: customFee · $2.50 USDC
+    Note over C,M: Step 4 - Settle (daily)
+    I->>M: kit.bridge() $100.00 USDC
+    I->>F: customFee $2.50 USDC
 ```
+
+### Wallets in This Flow
+
+Five wallet roles appear in this use case. Three are platform-controlled (created and managed by you); two are external.
+
+**Platform-controlled wallets** (you hold the keys via your chosen adapter):
+
+- **Temporary Wallet** — a short-lived wallet created per order. It gives each customer a unique payment address so funds never mix before confirmation. Once the payment is swept to the internal wallet, this wallet is no longer used.
+- **Internal Wallet** — a single aggregation wallet that accumulates all incoming payments. Batch swaps and settlement both execute from here. Because everything flows through one wallet, you need only one swap and one bridge per settlement cycle rather than one per order.
+- **Fee Wallet** — a platform wallet that receives the 2.5% processing fee. It is set as the `customFee.recipientAddress` on the bridge call, so fee collection happens inside the same transaction as merchant settlement — no separate transfer needed.
+
+**External wallets** (not controlled by your platform):
+
+- **Customer** — the customer's own wallet. They send tokens to the temporary wallet address and never interact with your internal infrastructure directly.
+- **Merchant Wallet** — the merchant's external wallet on their preferred chain. Funds are minted directly to this address via CCTP `recipientAddress`; the merchant does not need to hold native tokens to receive USDC.
 
 ---
 
-## Code Walkthrough
+## Choosing Your Adapter
 
-### Step 1: Setup & Configuration
+The SDK calls for swap, bridge, and send are identical regardless of adapter. The only differences are key management and what infrastructure you're already on.
 
-**What this does:**
-- Sets platform fee percentage to 2.5%
-- Configures session expiry time
-- Initializes App Kit SDK
-- Creates adapter for internal wallet using Circle Wallet
-
-> **Note**: This example uses Circle Wallet adapter for built-in wallet management. You can replace it with your own wallet adapter (Viem, Ethers, or custom implementation) based on your infrastructure.
-
-```typescript
-import { StablecoinKit } from '@circle-fin/stablecoin-kit';
-import { createCircleWalletAdapter } from '@circle-fin/adapter-circle-wallet';
-
-// Configuration
-const PLATFORM_FEE_PERCENT = 2.5;
-const SESSION_EXPIRY_MINUTES = 15;
-
-// Initialize SDK
-const kit = new StablecoinKit();
-const internalWalletAdapter = createCircleWalletAdapter({
-  apiKey: process.env.CIRCLE_API_KEY,
-  walletId: process.env.INTERNAL_WALLET_ID,
-  entitySecret: process.env.CIRCLE_ENTITY_SECRET
-});
-```
+| | Ethers (v6) | Circle Wallet |
+|---|---|---|
+| **Key management** | You hold and store private keys | Circle manages keys — no private key in your code |
+| **Best for** | Teams with existing EVM key infrastructure | Enterprises already using Circle Wallets or preferring managed key custody |
 
 ---
 
-### Step 2: Create Payment Session
+## Implementation: Ethers Adapter
 
-**What this does:**
-- Creates a unique temporary wallet for each order
-- Calculates total charge including platform fee (order amount + 2.5%)
-- Returns payment address and session details
-- Session expires in 15 minutes if payment not received
-
-**Customer sees:**
-```
-Send 102.50 USDT to:
-0x7a250d5d64a2d...
-Expires in 15 minutes
-```
-
-```typescript
-async function createPaymentSession(order: PaymentOrder): Promise<PaymentSession> {
-  // Create temporary wallet for this payment
-  const tempWallet = await internalWalletAdapter.createWallet({
-    name: `Payment-${order.orderId}`,
-    blockchain: order.customerChain
-  });
-
-  const amounts = calculateAmounts(order.orderAmount);
-
-  return {
-    sessionId: `session_${order.orderId}`,
-    paymentAddress: tempWallet.address,
-    walletId: tempWallet.id,
-    expectedAmount: amounts.total.toFixed(2),
-    expectedToken: order.customerToken,
-    expiresAt: new Date(Date.now() + SESSION_EXPIRY_MINUTES * 60 * 1000)
-  };
-}
-```
-
----
-
-### Step 3: Monitor for Payment
-
-**What this does:**
-- Polls Circle Wallet API every 5 seconds to check balance
-- Verifies if payment address received the expected amount
-- Returns `true` when payment is confirmed
-- Times out after 5 minutes if payment not received
-- Provides progress updates every minute
-
-```typescript
-async function monitorPayment(session: PaymentSession): Promise<boolean> {
-  const maxAttempts = 60; // Poll for 5 minutes
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // Check wallet balance using Circle Wallet API
-    const balance = await internalWalletAdapter.getBalance({
-      walletId: session.walletId,
-      token: session.expectedToken
-    });
-
-    if (parseFloat(balance.amount) >= parseFloat(session.expectedAmount)) {
-      return true; // Payment received!
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-  }
-
-  return false; // Timeout
-}
-```
-
----
-
-### Step 4: Aggregate to Internal Wallet
-
-**What this does:**
-- Creates adapter for the temporary payment wallet
-- Sweeps all funds from temporary wallet to internal wallet
-- Happens immediately after payment is detected
-- Returns transaction hash for tracking
-- Customer order is confirmed at this point
-
-**Result:** Customer receives instant order confirmation!
-
-```typescript
-async function aggregateToInternalWallet(
-  order: PaymentOrder,
-  session: PaymentSession
-): Promise<string> {
-  // Create adapter for temporary payment wallet
-  const tempPaymentAdapter = createCircleWalletAdapter({
-    apiKey: process.env.CIRCLE_API_KEY,
-    walletId: session.walletId,
-    entitySecret: process.env.CIRCLE_ENTITY_SECRET
-  });
-
-  // Transfer from temporary wallet to internal wallet
-  const result = await kit.send({
-    from: { adapter: tempPaymentAdapter, chain: order.customerChain },
-    to: INTERNAL_WALLET_ID,
-    amount: calculateAmounts(order.orderAmount).total.toFixed(2),
-    token: order.customerToken
-  });
-
-  return result.txHash;
-}
-```
-
----
-
-### Step 5: Batch Swap (Hourly Job)
-
-**What this does:**
-- Runs as a scheduled job (e.g., every hour via cron)
-- Calculates total amount of each token type from all pending orders
-- Swaps ALL accumulated tokens to USDC in ONE transaction per token
-- Saves 80-90% gas compared to individual swaps
-- Skips swap if token is already USDC
-
-**Example:** 50 orders paid with USDT → 1 swap transaction instead of 50 (98% gas savings: $750 → $15)
-
-```typescript
-async function batchSwapToUSDC(
-  chain: string,
-  token: string,
-  orders: PaymentOrder[]
-): Promise<string> {
-  const totalAmount = orders.reduce((sum, o) => {
-    return sum + calculateAmounts(o.orderAmount).total;
-  }, 0);
-
-  // Swap all accumulated tokens in ONE transaction
-  const result = await kit.swap({
-    from: { adapter: internalWalletAdapter, chain },
-    tokenIn: token,
-    tokenOut: 'USDC',
-    amount: totalAmount.toFixed(2),
-    config: {
-      kitKey: process.env.KIT_KEY,
-      slippageBps: 50
-    }
-  });
-
-  return result.txHash;
-}
-```
-
----
-
-### Step 6: Settlement (Daily or On-Demand)
-
-**What this does:**
-- Runs daily or when merchant requests withdrawal
-- Calculates total amount owed to merchant from multiple orders
-- Bridges USDC directly to the merchant's external wallet address using `recipientAddress`
-- The merchant wallet does not need native tokens to receive USDC — CCTP mints directly to the address
-- Collects platform fees in the same bridge transaction using `customFee`
-- Uses SLOW transfer mode for zero protocol fees
-
-**Example:** Merchant has 10 orders totaling $1,000 → 1 bridge transaction settles to merchant + collects fee (instead of 11 separate transactions)
-
-```typescript
-async function settleMerchant(
-  merchant: MerchantConfig,
-  orders: PaymentOrder[]
-): Promise<string[]> {
-  const totalAmount = orders.reduce((sum, o) =>
-    sum + calculateAmounts(o.orderAmount).baseAmount, 0
-  );
-  const totalFees = orders.reduce((sum, o) =>
-    sum + calculateAmounts(o.orderAmount).fee, 0
-  );
-
-  // Bridge directly to the merchant's external wallet address.
-  // recipientAddress overrides the adapter's own address so USDC is minted
-  // to the merchant on the destination chain — no native tokens required.
-  const bridgeResult = await kit.bridge({
-    from: { adapter: internalWalletAdapter, chain: 'Ethereum' },
-    to: {
-      adapter: internalWalletAdapter,
-      chain: merchant.settlementChain,
-      recipientAddress: merchant.settlementAddress
-    },
-    amount: totalAmount.toFixed(2),
-    config: {
-      transferSpeed: 'SLOW',
-      customFee: {
-        value: totalFees.toFixed(2),
-        recipientAddress: PLATFORM_FEE_WALLET
-      }
-    }
-  });
-
-  return bridgeResult.steps.map(s => s.txHash);
-}
-```
-
----
-
-## Complete Example Script
+Use this if your backend holds private keys directly, or if you use an existing EVM wallet infrastructure (Alchemy, Infura, etc.).
 
 ### Prerequisites
 
 ```bash
-# Install dependencies
-npm install @circle-fin/stablecoin-kit @circle-fin/adapter-circle-wallet dotenv
-
-# Create .env file
-touch .env
+npm install @circle-fin/app-kit @circle-fin/adapter-ethers-v6 ethers dotenv
 ```
-
-### Environment Variables
-
-> **Note**: This example uses Circle Wallet for illustration purposes. If you're using your own wallet infrastructure, replace these with your wallet provider's configuration.
->
-> **Circle Wallet Setup**: To get your Circle API credentials, see the [Circle Wallet Quickstart Guide](https://developers.circle.com/w3s/docs/programmable-wallets-quickstart). You'll need:
-> - API Key from the [Circle Console](https://console.circle.com/)
-> - Entity Secret generated during account setup
-> - Wallet ID after creating your first wallet
 
 ```bash
 # .env
-CIRCLE_API_KEY=your_circle_api_key
-INTERNAL_WALLET_ID=your_internal_wallet_id
-CIRCLE_ENTITY_SECRET=your_entity_secret
-KIT_KEY=your_circle_kit_key
+INTERNAL_WALLET_KEY=0xYourInternalWalletPrivateKey
+KIT_KEY=your_kit_key
 PLATFORM_FEE_ADDRESS=0xYourFeeWallet
+# Optional: bring your own RPC
+ALCHEMY_KEY=your_alchemy_key
 ```
 
-### Full Code
+> The ethers adapter requires you to manage private keys. Store them in a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) in production — never commit them to source control.
+
+### Step 1: Setup
 
 ```typescript
 import 'dotenv/config';
-import { StablecoinKit } from '@circle-fin/stablecoin-kit';
-import { createCircleWalletAdapter } from '@circle-fin/adapter-circle-wallet';
+import { AppKit } from '@circle-fin/app-kit';
+import { createEthersAdapterFromPrivateKey } from '@circle-fin/adapter-ethers-v6';
+import { ethers } from 'ethers';
 
-// Configuration
 const PLATFORM_FEE_PERCENT = 2.5;
 const SESSION_EXPIRY_MINUTES = 15;
 const SLIPPAGE_BPS = 50;
 
-// Initialization
-const kit = new StablecoinKit();
-const internalWalletAdapter = createCircleWalletAdapter({
-  apiKey: process.env.CIRCLE_API_KEY as string,
-  walletId: process.env.INTERNAL_WALLET_ID as string,
-  entitySecret: process.env.CIRCLE_ENTITY_SECRET as string
+const kit = new AppKit();
+
+// Internal wallet: created from a private key you manage
+const internalWalletAdapter = createEthersAdapterFromPrivateKey({
+  privateKey: process.env.INTERNAL_WALLET_KEY as string
 });
 
-const INTERNAL_WALLET_ID = process.env.INTERNAL_WALLET_ID as string;
+const INTERNAL_WALLET_ADDRESS = new ethers.Wallet(process.env.INTERNAL_WALLET_KEY as string).address;
 const PLATFORM_FEE_WALLET = process.env.PLATFORM_FEE_ADDRESS as string;
+```
 
-// Helper function
-function calculateAmounts(orderAmount: string) {
-  const baseAmount = parseFloat(orderAmount);
-  const fee = baseAmount * PLATFORM_FEE_PERCENT / 100;
-  const total = baseAmount + fee;
-  return { baseAmount, fee, total };
-}
+### Step 2: Create Payment Session
 
-// Step 1: Create payment session
+With ethers, temporary wallets are generated locally — no API call, no managed service.
+
+```typescript
 async function createPaymentSession(orderId: string, orderAmount: string, token: string, chain: string) {
-  const tempWallet = await internalWalletAdapter.createWallet({
-    name: `Payment-${orderId}`,
-    blockchain: chain
-  });
-
+  // Generate a random temporary wallet locally
+  const tempWallet = ethers.Wallet.createRandom();
   const amounts = calculateAmounts(orderAmount);
-
-  console.log(`\n✓ Payment session created`);
-  console.log(`  Send ${amounts.total.toFixed(2)} ${token} to:`);
-  console.log(`  ${tempWallet.address}`);
 
   return {
     sessionId: `session_${orderId}`,
     paymentAddress: tempWallet.address,
-    walletId: tempWallet.id,
+    paymentPrivateKey: tempWallet.privateKey,  // Store for use in aggregation step
     expectedAmount: amounts.total.toFixed(2),
     expectedToken: token,
     expiresAt: new Date(Date.now() + SESSION_EXPIRY_MINUTES * 60 * 1000)
   };
 }
+```
 
-// Step 2: Monitor payment
-async function monitorPayment(session: any) {
-  console.log(`\n⏳ Monitoring for payment...`);
+### Step 3: Monitor Payment
+
+App Kit uses built-in token aliases (`'USDC'`, `'USDT'`) for `kit.send()`, `kit.swap()`, and `kit.bridge()` — no contract addresses needed there. However, polling for an incoming balance on the temporary wallet requires a direct ERC-20 `balanceOf` read via JSON-RPC, so you do need the contract address at this step.
+
+```typescript
+// Contract addresses are only needed here for balance polling — not for kit.send/swap/bridge
+const TOKEN_ADDRESSES: Record<string, Record<string, string>> = {
+  Ethereum: {
+    USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+    USDT: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+  },
+  Base: {
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+  },
+};
+
+const ERC20_ABI = ['function balanceOf(address) view returns (uint256)'];
+
+async function monitorPayment(session: any): Promise<boolean> {
+  const tokenAddress = TOKEN_ADDRESSES[session.customerChain]?.[session.expectedToken];
+  const provider = new ethers.JsonRpcProvider(/* your RPC URL */);
+  const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  const expectedRaw = ethers.parseUnits(session.expectedAmount, 6); // USDC and USDT are both 6 decimals
 
   for (let attempt = 0; attempt < 60; attempt++) {
-    const balance = await internalWalletAdapter.getBalance({
-      walletId: session.walletId,
-      token: session.expectedToken
-    });
-
-    if (parseFloat(balance.amount) >= parseFloat(session.expectedAmount)) {
-      console.log(`  ✓ Payment received!`);
-      return true;
-    }
-
+    const balance: bigint = await contract.balanceOf(session.paymentAddress);
+    if (balance >= expectedRaw) return true;
     await new Promise(resolve => setTimeout(resolve, 5000));
   }
-
   return false;
 }
+```
 
-// Step 3: Aggregate to internal wallet
-async function aggregateToInternalWallet(session: any, orderAmount: string, chain: string, token: string) {
-  const tempPaymentAdapter = createCircleWalletAdapter({
-    apiKey: process.env.CIRCLE_API_KEY as string,
-    walletId: session.walletId,
-    entitySecret: process.env.CIRCLE_ENTITY_SECRET as string
+### Step 4: Aggregate to Internal Wallet
+
+Use the private key stored in the session to create an adapter for the temporary wallet.
+
+```typescript
+async function aggregateToInternalWallet(session: any) {
+  // Reconstruct adapter from the stored private key
+  const tempPaymentAdapter = createEthersAdapterFromPrivateKey({
+    privateKey: session.paymentPrivateKey
   });
-
-  const amounts = calculateAmounts(orderAmount);
 
   const result = await kit.send({
-    from: { adapter: tempPaymentAdapter, chain },
-    to: INTERNAL_WALLET_ID,
-    amount: amounts.total.toFixed(2),
-    token
+    from: { adapter: tempPaymentAdapter, chain: session.customerChain },
+    to: INTERNAL_WALLET_ADDRESS,
+    amount: session.expectedAmount,
+    token: session.expectedToken
   });
-
-  console.log(`\n✓ Aggregated to internal wallet`);
-  console.log(`  TX: ${result.txHash}`);
 
   return result.txHash;
 }
+```
 
-// Step 4: Batch swap (hourly job)
+### Step 5: Batch Swap + Settlement
+
+The swap and settlement calls are identical to the Circle Wallet version — only the adapter variable changes.
+
+```typescript
 async function batchSwapToUSDC(chain: string, token: string, totalAmount: number) {
-  if (token === 'USDC') {
-    console.log(`\n✓ Already in USDC, no swap needed`);
-    return 'no-swap';
-  }
+  if (token === 'USDC') return 'no-swap';
 
   const result = await kit.swap({
     from: { adapter: internalWalletAdapter, chain },
     tokenIn: token,
     tokenOut: 'USDC',
-    amount: totalAmount.toFixed(2),
-    config: {
-      kitKey: process.env.KIT_KEY as string,
-      slippageBps: SLIPPAGE_BPS
-    }
+    amountIn: totalAmount.toFixed(2),
+    config: { kitKey: process.env.KIT_KEY as string, slippageBps: SLIPPAGE_BPS }
   });
-
-  console.log(`\n✓ Batch swap completed`);
-  console.log(`  ${token} → USDC: ${totalAmount.toFixed(2)}`);
-  console.log(`  TX: ${result.txHash}`);
 
   return result.txHash;
 }
 
-// Step 5: Settle to merchant
 async function settleMerchant(merchantAddress: string, merchantChain: string, amount: number, fee: number) {
   const bridgeResult = await kit.bridge({
     from: { adapter: internalWalletAdapter, chain: 'Ethereum' },
@@ -443,114 +225,199 @@ async function settleMerchant(merchantAddress: string, merchantChain: string, am
     amount: amount.toFixed(2),
     config: {
       transferSpeed: 'SLOW',
-      customFee: {
-        value: fee.toFixed(2),
-        recipientAddress: PLATFORM_FEE_WALLET
-      }
+      customFee: { value: fee.toFixed(2), recipientAddress: PLATFORM_FEE_WALLET }
     }
   });
 
-  console.log(`\n✓ Settled to merchant`);
-  console.log(`  Merchant receives: $${amount.toFixed(2)}`);
-  console.log(`  Platform fee: $${fee.toFixed(2)}`);
-
   return bridgeResult.steps.map(s => s.txHash);
 }
-
-// Run complete flow
-async function runPaymentFlow() {
-  console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   STABLECOIN ACQUIRING DEMO            ║');
-  console.log('╚════════════════════════════════════════╝');
-
-  // Step 1: Create session
-  const session = await createPaymentSession(
-    `order_${Date.now()}`,
-    '100.00',
-    'USDT',
-    'Ethereum'
-  );
-
-  // Step 2: Monitor payment
-  const received = await monitorPayment(session);
-
-  if (!received) {
-    console.log('\n✗ Payment not received');
-    return;
-  }
-
-  // Step 3: Aggregate
-  await aggregateToInternalWallet(session, '100.00', 'Ethereum', 'USDT');
-
-  console.log('\n✓ Payment flow complete');
-  console.log('  Customer: Order confirmed');
-  console.log('  Backend: Funds ready for batch processing');
-}
-
-// Execute
-runPaymentFlow().catch(console.error);
 ```
 
-### Run the Example
+---
+
+## Implementation: Circle Wallet Adapter
+
+Use this if you manage wallets through Circle's developer-controlled wallet service. Circle handles key custody — you interact via API key and entity secret.
+
+### Prerequisites
 
 ```bash
-npm run app-kit:stablecoin-acquiring
+npm install @circle-fin/app-kit @circle-fin/adapter-circle-wallets @circle-fin/developer-controlled-wallets dotenv
+```
 
-# Or run directly
-npx tsx app-kit-use-cases/01-stablecoin-acquiring.ts
+```bash
+# .env
+CIRCLE_API_KEY=your_circle_api_key
+CIRCLE_ENTITY_SECRET=your_entity_secret
+INTERNAL_WALLET_ID=your_internal_wallet_id
+INTERNAL_WALLET_ADDRESS=0xYourInternalWalletAddress
+WALLET_SET_ID=your_wallet_set_id
+KIT_KEY=your_kit_key
+PLATFORM_FEE_ADDRESS=0xYourFeeWallet
+```
+
+> Get your Circle credentials at [console.circle.com](https://console.circle.com/). See the [Circle Wallet Quickstart](https://developers.circle.com/w3s/docs/programmable-wallets-quickstart) for wallet setup.
+
+### Step 1: Setup
+
+```typescript
+import 'dotenv/config';
+import { AppKit } from '@circle-fin/app-kit';
+import { createCircleWalletsAdapter } from '@circle-fin/adapter-circle-wallets';
+
+const PLATFORM_FEE_PERCENT = 2.5;
+const SESSION_EXPIRY_MINUTES = 15;
+const SLIPPAGE_BPS = 50;
+
+const kit = new AppKit();
+
+// A single adapter instance handles all Circle wallets — address is specified per call
+const circleAdapter = createCircleWalletsAdapter({
+  apiKey: process.env.CIRCLE_API_KEY as string,
+  entitySecret: process.env.CIRCLE_ENTITY_SECRET as string,
+});
+
+const INTERNAL_WALLET_ADDRESS = process.env.INTERNAL_WALLET_ADDRESS as string;
+const WALLET_SET_ID = process.env.WALLET_SET_ID as string;
+const PLATFORM_FEE_WALLET = process.env.PLATFORM_FEE_ADDRESS as string;
+```
+
+### Step 2: Create Payment Session
+
+Create a managed wallet via the Circle SDK, accessed through `circleAdapter.getSdk()`.
+
+```typescript
+async function createPaymentSession(orderId: string, orderAmount: string, token: string, chain: string) {
+  // Access the Circle SDK directly for wallet creation
+  const sdk = await circleAdapter.getSdk();
+  const walletResponse = await sdk.devc.createWallets({
+    idempotencyKey: `payment-${orderId}`,
+    walletSetId: WALLET_SET_ID,
+    blockchains: [chain as any],  // e.g. 'ETH', 'BASE', 'MATIC', 'ARB'
+    count: 1,
+    metadata: [{ name: `Payment-${orderId}`, refId: orderId }],
+  });
+
+  const wallet = walletResponse.data?.wallets?.[0];
+  if (!wallet?.id || !wallet?.address) throw new Error('Failed to create wallet');
+
+  const amounts = calculateAmounts(orderAmount);
+
+  return {
+    sessionId: `session_${orderId}`,
+    paymentAddress: wallet.address,
+    paymentWalletId: wallet.id,    // Circle wallet ID — no private key needed
+    expectedAmount: amounts.total.toFixed(2),
+    expectedToken: token,
+    customerChain: chain,
+    expiresAt: new Date(Date.now() + SESSION_EXPIRY_MINUTES * 60 * 1000)
+  };
+}
+```
+
+### Step 3: Monitor Payment
+
+Poll the Circle Wallet API via `getWalletTokenBalance` — no RPC node or contract ABI needed.
+
+```typescript
+async function monitorPayment(session: any): Promise<boolean> {
+  const sdk = await circleAdapter.getSdk();
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    // Circle API returns balance directly — no on-chain read needed
+    const balanceResponse = await sdk.devc.getWalletTokenBalance({ id: session.paymentWalletId });
+    const balances = balanceResponse.data?.tokenBalances ?? [];
+    const tokenBalance = balances.find(
+      (b: any) => b.token?.symbol?.toUpperCase() === session.expectedToken.toUpperCase()
+    );
+
+    if (parseFloat(tokenBalance?.amount ?? '0') >= parseFloat(session.expectedAmount)) {
+      return true;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  return false;
+}
+```
+
+### Step 4: Aggregate to Internal Wallet
+
+The Circle Wallets adapter requires an explicit `address` in the `from` context — one adapter instance covers all wallets.
+
+```typescript
+async function aggregateToInternalWallet(session: any) {
+  const result = await kit.send({
+    from: {
+      adapter: circleAdapter,
+      chain: session.customerChain as any,
+      address: session.paymentAddress,   // specify which Circle wallet to send from
+    },
+    to: INTERNAL_WALLET_ADDRESS,
+    amount: session.expectedAmount,
+    token: session.expectedToken as any,
+  });
+
+  return result.txHash ?? '';
+}
+```
+
+### Step 5: Batch Swap + Settlement
+
+The `address` field is required in `from` for Circle Wallets. The swap and bridge logic is otherwise identical to the ethers adapter.
+
+```typescript
+async function batchSwapToUSDC(chain: string, token: string, totalAmount: number) {
+  if (token === 'USDC') return 'no-swap';
+
+  const result = await kit.swap({
+    from: { adapter: circleAdapter, chain: chain as any, address: INTERNAL_WALLET_ADDRESS },
+    tokenIn: token as any,
+    tokenOut: 'USDC',
+    amountIn: totalAmount.toFixed(2),
+    config: { kitKey: process.env.KIT_KEY as string, slippageBps: SLIPPAGE_BPS }
+  });
+
+  return result.txHash;
+}
+
+async function settleMerchant(merchantAddress: string, merchantChain: string, amount: number, fee: number) {
+  const bridgeResult = await kit.bridge({
+    from: { adapter: circleAdapter, chain: 'Ethereum' as any, address: INTERNAL_WALLET_ADDRESS },
+    to: {
+      adapter: circleAdapter,
+      chain: merchantChain as any,
+      address: merchantAddress,
+      recipientAddress: merchantAddress,
+    },
+    amount: amount.toFixed(2),
+    config: {
+      transferSpeed: 'SLOW',
+      customFee: { value: fee.toFixed(2), recipientAddress: PLATFORM_FEE_WALLET }
+    }
+  });
+
+  return bridgeResult.steps.map(s => s.txHash ?? '');
+}
 ```
 
 ---
 
-## Key Takeaways
+## Adapter Differences at a Glance
 
-### 1. **Instant Customer Confirmation**
-- Customer pays → Funds aggregated → Order confirmed immediately
-- Customer doesn't wait for swap or settlement
-- Better user experience and higher conversion rates
-
-### 2. **Massive Cost Savings Through Batching**
-- Batch swaps save 80-90% gas (1 transaction vs 100 transactions)
-- Batch settlements save 60-80% gas (1 bridge vs multiple bridges)
-- Overall: 85% cost reduction at scale ($2,500 → $360 for 100 payments)
-
-### 3. **Flexible Settlement Options**
-- Merchants choose: instant, daily, weekly, or on-demand
-- Platform optimizes gas by settling during low-price periods
-- Built-in fee collection via `customFee` parameter
-
-### 4. **Simple Integration with Circle Wallet**
-- Circle Wallet handles wallet creation and monitoring automatically
-- App Kit provides simple APIs for swap, bridge, and send
-- No need to manage private keys or blockchain RPC directly
-- Can be replaced with your own wallet adapter
-
-### 5. **Production Ready**
-- Built-in fee collection mechanism
-- Automatic retries and error handling
-- Enterprise-grade wallet infrastructure
-- Full transaction tracking with explorer links
-
----
-
-## Next Steps
-
-1. **Test on Testnet**: Use Circle's testnet environment to try the complete flow
-2. **Add Database**: Store sessions, orders, and transaction records for tracking
-3. **Implement Webhooks**: Notify merchants when settlements complete
-4. **Add Monitoring**: Track success rates, gas costs, and processing times
-5. **Scale Up**: Handle thousands of payments per day efficiently with batching
+| Step | Ethers | Circle Wallets |
+|---|---|---|
+| **Init adapter** | `createEthersAdapterFromPrivateKey({ privateKey })` | `createCircleWalletsAdapter({ apiKey, entitySecret })` |
+| **Create temp wallet** | `ethers.Wallet.createRandom()` — local, no API call | `sdk.devc.createWallets({ blockchains, walletSetId, ... })` — Circle API |
+| **Check balance** | Read ERC-20 contract via JSON-RPC provider | `sdk.devc.getWalletTokenBalance({ id: walletId })` — Circle API |
+| **from context** | `{ adapter, chain }` | `{ adapter, chain, address }` — address required |
+| **Swap / Bridge / Send** | Identical | Identical |
 
 ---
 
 ## Resources
 
 - [Circle App Kit Documentation](https://developers.circle.com/app-kit)
-- [Circle Wallet API](https://developers.circle.com/wallets)
-- [Full Example Code](./01-stablecoin-acquiring.ts)
-- [Fund Flow Diagram](./FUND_FLOW_DIAGRAM.md)
-- [Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)
-
----
-
-**Questions?** Check the [integration notes](./01-stablecoin-acquiring.ts#L400-L450) in the code or reach out to Circle support.
+- [Adapter Setups](https://developers.circle.com/app-kit/adapter-setups)
+- [Circle Wallet Quickstart](https://developers.circle.com/w3s/docs/programmable-wallets-quickstart)
+- [Full Circle Wallet Example](./01-stablecoin-acquiring.ts)

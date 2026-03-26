@@ -39,6 +39,14 @@ flowchart LR
     O -. "below threshold · skip" .- T
 ```
 
+### Wallets in This Flow
+
+This use case uses a single wallet, but it operates on multiple chains simultaneously.
+
+- **Treasury Wallet (per-chain instances)** — one set of credentials (`TREASURY_WALLET_ID`) controls balances on Base, Arbitrum, Polygon, Optimism, and Ethereum. Each chain has its own balance, but you configure targets and minimums per chain. Funds on chains with excess balances bridge to the Ethereum instance, which is designated the main treasury. The wallet does not change — only which chain it is acting on changes per operation.
+
+The distinction that matters here is between a **chain instance** (a balance on a specific chain) and the **wallet itself** (the single entity you authenticate as). App Kit handles routing to the correct chain based on the `chain` field you pass to `kit.bridge()` — you do not manage separate credentials per chain.
+
 ---
 
 ## Code Walkthrough
