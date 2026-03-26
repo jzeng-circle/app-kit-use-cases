@@ -30,9 +30,9 @@ flowchart LR
     P["Polygon\nUSDC $980\ntarget $1,000"]
     T["Treasury\nOptimism"]
 
-    B -->|"bridge $800 out\nSLOW · $0 fee"| T
-    T -->|"bridge $650 in\nSLOW · $0 fee"| A
-    P -. "diff $20 < min $100\nskip" .- T
+    B -->|"$800 out · SLOW · $0"| T
+    A <--|"$650 in · SLOW · $0"| T
+    P -. "diff $20 < min $100 · skip" .- T
 ```
 
 Each operational chain has an **upper bound** ($1,500), a **target** ($1,000), and a **lower bound** ($500). When a chain's balance exceeds the upper bound, the excess is bridged out to the Optimism treasury. When it falls below the lower bound, the deficit is drawn in from the treasury. Rebalancing is skipped when the difference is less than the minimum bridge amount ($100) — Polygon's $20 imbalance in this example is below that floor.
